@@ -1,11 +1,4 @@
 {
-  "npmCommand": [
-    "mise",
-    "exec",
-    "node@24",
-    "--",
-    "npm"
-  ],
   "defaultThinkingLevel": "high",
   "compaction": {
     "enabled": true,

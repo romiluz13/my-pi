@@ -20,12 +20,14 @@ step()  { echo -e "\n${BOLD}→ $*${RESET}"; }
 
 SCRIPT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 PI_AGENT_DIR="${HOME}/.pi/agent"
+AGENTS_SKILLS_DIR="${HOME}/.agents/skills"
+CLAUDE_SKILLS_DIR="${HOME}/.claude/skills"
 SKIP_CLI=false
 
 [[ "${1:-}" == "--skip-cli" ]] && SKIP_CLI=true
 
 echo -e "${BOLD}my-pi installer${RESET}"
-echo -e "The best Pi coding agent setup — 10 packages, 44 skills, autonomous workflow.\n"
+echo -e "The best Pi coding agent setup — 10 packages, 59 skills, autonomous workflow.\n"
 
 # ── Prerequisites ──────────────────────────────────────────────────────────
 
@@ -46,23 +48,17 @@ mkdir -p "$PI_AGENT_DIR"
 
 # Merge our settings into existing Pi settings (preserve provider/model)
 if [ -f "$PI_AGENT_DIR/settings.json" ]; then
-  # Backup existing
   cp "$PI_AGENT_DIR/settings.json" "$PI_AGENT_DIR/settings.json.bak.$(date +%s)"
-  
-  # Merge: keep existing provider/model, add our packages + thinking + compaction
-  cat "$PI_AGENT_DIR/settings.json" | jq '. + {
-    "defaultThinkingLevel": "high",
-    "compaction": {
-      "enabled": true,
-      "reserveTokens": 16384,
-      "keepRecentTokens": 30000
-    },
-    "packages": (input | .packages)
-  }' "$SCRIPT_DIR/config/settings.json" > /tmp/pi-settings-merged.json 2>/dev/null || {
-    # Fallback: just use our settings
-    cp "$SCRIPT_DIR/config/settings.json" "$PI_AGENT_DIR/settings.json"
-  }
-  mv /tmp/pi-settings-merged.json "$PI_AGENT_DIR/settings.json" 2>/dev/null || true
+  # Keep existing provider/model, add our packages + thinking + compaction
+  existing=$(cat "$PI_AGENT_DIR/settings.json")
+  ours=$(cat "$SCRIPT_DIR/config/settings.json")
+  echo "$existing" | jq --argjson ours "$ours" '. + {
+    "defaultThinkingLevel": $ours.defaultThinkingLevel,
+    "compaction": $ours.compaction,
+    "theme": $ours.theme,
+    "packages": $ours.packages
+  }' > /tmp/pi-settings-merged.json
+  mv /tmp/pi-settings-merged.json "$PI_AGENT_DIR/settings.json"
 else
   cp "$SCRIPT_DIR/config/settings.json" "$PI_AGENT_DIR/settings.json"
 fi
@@ -118,49 +114,112 @@ if [ "$SKIP_CLI" = false ]; then
     info "bdata already installed ($(bdata --version 2>/dev/null))"
   fi
 
-  # Octocode CLI (via npx, no global install needed)
   echo "  octocode available via 'npx octocode'"
   info "Run 'npx octocode auth login' to authenticate with GitHub"
 fi
 
-# ── Bright Data skills ─────────────────────────────────────────────────────
+# ── Skills ─────────────────────────────────────────────────────────────────
 
-step "Installing Bright Data skills"
+step "Installing skills"
 
-BD_SKILLS=(
-  agent-onboarding search scrape discover-api data-feeds
-  brightdata-cli live-research rag-pipeline
-  bright-data-best-practices proxy
-  python-sdk-best-practices js-sdk-best-practices
-)
+mkdir -p "$AGENTS_SKILLS_DIR" "$CLAUDE_SKILLS_DIR" "$PI_AGENT_DIR/skills"
 
-# Clone Bright Data skills if not present
-BD_REPO="$HOME/.my-pi-sources/brightdata-skills"
+# Bright Data skills (6 core — search, scrape, discover, data-feeds, live-research, cli)
+BD_SKILLS=(search scrape discover-api data-feeds live-research brightdata-cli)
+BD_REPO="${HOME}/.my-pi-sources/brightdata-skills"
 if [ ! -d "$BD_REPO" ]; then
   mkdir -p "$(dirname "$BD_REPO")"
   git clone --depth 1 https://github.com/brightdata/skills.git "$BD_REPO" 2>&1 | tail -1
 fi
-
 for skill in "${BD_SKILLS[@]}"; do
   if [ -d "$BD_REPO/skills/$skill" ]; then
     ln -sfn "$BD_REPO/skills/$skill" "$PI_AGENT_DIR/skills/$skill"
   fi
 done
-info "12 Bright Data skills installed"
+info "6 Bright Data skills installed"
 
-# ── Octocode skills ────────────────────────────────────────────────────────
-
-step "Installing Octocode skills"
-
-OC_SKILLS=(
-  octocode octocode-research octocode-brainstorming
-  octocode-rfc-generator octocode-roast
-)
-
+# Octocode skills (5)
+OC_SKILLS=(octocode octocode-research octocode-brainstorming octocode-rfc-generator octocode-roast)
 for skill in "${OC_SKILLS[@]}"; do
   npx octocode skill --name "$skill" --platform pi 2>&1 | tail -1
+  npx octocode skill --name "$skill" --platform common 2>&1 | tail -1
 done
 info "5 Octocode skills installed"
+
+# MongoDB skills (7 official from mongodb/agent-skills)
+MDB_REPO="${HOME}/.my-pi-sources/mongodb-agent-skills"
+if [ ! -d "$MDB_REPO" ]; then
+  mkdir -p "$(dirname "$MDB_REPO")"
+  git clone --depth 1 https://github.com/mongodb/agent-skills.git "$MDB_REPO" 2>&1 | tail -1
+fi
+MDB_SKILLS=(mongodb-atlas-stream-processing mongodb-connection mongodb-mcp-setup mongodb-natural-language-querying mongodb-query-optimizer mongodb-schema-design mongodb-search-and-ai)
+for skill in "${MDB_SKILLS[@]}"; do
+  if [ -d "$MDB_REPO/skills/$skill" ]; then
+    cp -r "$MDB_REPO/skills/$skill" "$AGENTS_SKILLS_DIR/$skill"
+  fi
+done
+info "7 MongoDB skills installed"
+
+# Vercel skills (5 — react-best-practices, composition-patterns, deploy-to-vercel, web-design-guidelines, agent-browser)
+VC_SKILLS=(vercel-react-best-practices vercel-composition-patterns deploy-to-vercel web-design-guidelines)
+for skill in "${VC_SKILLS[@]}"; do
+  npx skills add vercel-labs/agent-skills --skill "$skill" -y 2>&1 | tail -1
+done
+npx skills add vercel-labs/agent-browser --skill agent-browser -y 2>&1 | tail -1
+info "5 Vercel skills installed"
+
+# Matt Pocock skills (19 — via npx skills)
+echo "  Installing Matt Pocock skills..."
+npx skills add mattpocock/skills --skill tdd -y 2>&1 | tail -1
+npx skills add mattpocock/skills --skill handoff -y 2>&1 | tail -1
+npx skills add mattpocock/skills --skill prototype -y 2>&1 | tail -1
+npx skills add mattpocock/skills --skill grill-with-docs -y 2>&1 | tail -1
+npx skills add mattpocock/skills --skill to-spec -y 2>&1 | tail -1
+npx skills add mattpocock/skills --skill to-tickets -y 2>&1 | tail -1
+npx skills add mattpocock/skills --skill triage -y 2>&1 | tail -1
+npx skills add mattpocock/skills --skill implement -y 2>&1 | tail -1
+npx skills add mattpocock/skills --skill code-review -y 2>&1 | tail -1
+npx skills add mattpocock/skills --skill research -y 2>&1 | tail -1
+npx skills add mattpocock/skills --skill wayfinder -y 2>&1 | tail -1
+npx skills add mattpocock/skills --skill wizard -y 2>&1 | tail -1
+npx skills add mattpocock/skills --skill codebase-design -y 2>&1 | tail -1
+npx skills add mattpocock/skills --skill domain-modeling -y 2>&1 | tail -1
+npx skills add mattpocock/skills --skill diagnosing-bugs -y 2>&1 | tail -1
+npx skills add mattpocock/skills --skill resolving-merge-conflicts -y 2>&1 | tail -1
+npx skills add mattpocock/skills --skill writing-great-skills -y 2>&1 | tail -1
+npx skills add mattpocock/skills --skill teach -y 2>&1 | tail -1
+npx skills add mattpocock/skills --skill improve-codebase-architecture -y 2>&1 | tail -1
+info "19 Matt Pocock skills installed"
+
+# Adapted Superpowers skills (3 — brainstorming, verification-before-completion, receiving-code-review)
+# These are bundled in the repo under skills/
+for skill in brainstorming verification-before-completion receiving-code-review; do
+  if [ -d "$SCRIPT_DIR/skills/$skill" ]; then
+    cp -r "$SCRIPT_DIR/skills/$skill" "$AGENTS_SKILLS_DIR/$skill"
+    ln -sfn "$AGENTS_SKILLS_DIR/$skill" "$CLAUDE_SKILLS_DIR/$skill"
+  fi
+done
+info "3 adapted Superpowers skills installed"
+
+# Python/OSS skills (3 — uv, github, commit from mitsuhiko/agent-stuff)
+MIT_REPO="${HOME}/.my-pi-sources/mitsuhiko-agent-stuff"
+if [ ! -d "$MIT_REPO" ]; then
+  mkdir -p "$(dirname "$MIT_REPO")"
+  git clone --depth 1 https://github.com/mitsuhiko/agent-stuff.git "$MIT_REPO" 2>&1 | tail -1
+fi
+for skill in uv github commit; do
+  if [ -d "$MIT_REPO/skills/$skill" ]; then
+    cp -r "$MIT_REPO/skills/$skill" "$AGENTS_SKILLS_DIR/$skill"
+  fi
+done
+info "3 Python/OSS skills installed"
+
+# Link shared skills to Claude Code
+for skill in "$AGENTS_SKILLS_DIR"/*; do
+  name=$(basename "$skill")
+  ln -sfn "$skill" "$CLAUDE_SKILLS_DIR/$name"
+done
+info "All skills linked to Claude Code"
 
 # ── AGENTS.md ──────────────────────────────────────────────────────────────
 
@@ -181,10 +240,10 @@ fi
 
 echo -e "\n${BOLD}${GREEN}✓ my-pi setup complete!${RESET}\n"
 echo -e "Next steps:"
-echo -e "  1. ${BOLD}bdata login${RESET}           — authenticate Bright Data (free)"
-echo -e "  2. ${BOLD}npx octocode auth login${RESET}  — authenticate Octocode with GitHub"
-echo -e "  3. ${BOLD}pi${RESET}                  — start Pi"
-echo -e "  4. ${BOLD}/memory-interview${RESET}    — one-time setup (tells Pi who you are)"
-echo -e "  5. ${BOLD}/memory-index-sessions${RESET} — one-time setup (index past sessions)"
-echo -e "  6. ${BOLD}/learn-memory-tool${RESET}   — one-time setup (learn memory tools)"
-echo -e "\nThen just start coding. Pi plans, builds, tests, reviews, documents, remembers — all autonomous.\n"
+echo -e "  1. ${BOLD}bdata login${RESET}              — authenticate Bright Data (free)"
+echo -e "  2. ${BOLD}npx octocode auth login${RESET}     — authenticate Octocode with GitHub"
+echo -e "  3. ${BOLD}pi${RESET}                     — start Pi"
+echo -e "  4. ${BOLD}/memory-interview${RESET}       — one-time setup (tells Pi who you are)"
+echo -e "  5. ${BOLD}/memory-index-sessions${RESET}  — one-time setup (index past sessions)"
+echo -e "  6. ${BOLD}/learn-memory-tool${RESET}      — one-time setup (learn memory tools)"
+echo -e "\nThen just start coding. Pi plans, builds, tests, reviews, verifies, documents, remembers — all autonomous.\n"
