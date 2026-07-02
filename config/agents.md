@@ -28,7 +28,7 @@ Single source of truth for every AI coding tool on this machine (Claude Code, Co
 
 When given a task, follow this flow automatically. The workflow IS the skill router — each step names the exact skill. Don't spawn a router subagent.
 
-1. **Understand.** Read repo AGENTS.md, relevant files, existing patterns. Search memory for relevant context (Pi: `memory_search`, Claude Code: auto-memory, Codex: built-in memories). If ambiguous, ask ONE clarifying question. If clear, proceed.
+1. **Understand.** Read repo AGENTS.md, relevant files, existing patterns. Search memory for relevant context. If ambiguous, ask ONE clarifying question. If clear, proceed.
 2. **Brainstorm (new features).** Before building anything new → `brainstorming` skill: explore context, ask questions one at a time, propose approaches, present design, get user approval.
 3. **Plan (big tasks).** >3 files or new feature → `/to-spec` then `/to-tickets`. Enormous fog-of-war → `/wayfinder`. Uncertain design → `prototype` or `grill-with-docs` to stress-test. Bug fix or small change → skip to step 4.
 4. **Build.** Implement following existing patterns. Don't over-engineer. Python → use `uv` (not pip/venv). LSP runs on every edit via pi-lens — fix type errors immediately.
@@ -36,7 +36,7 @@ When given a task, follow this flow automatically. The workflow IS the skill rou
 6. **Review.** Spawn reviewer subagent: "Use reviewer to review this diff." Critical code → `code-review` skill (parallel standards + spec). Receiving feedback → `receiving-code-review` skill (verify before implementing, push back if wrong). Architecture issues found → `improve-codebase-architecture` skill.
 7. **Verify + commit.** Before claiming done → `verification-before-completion` skill: run verification command, read full output, confirm. Evidence before claims. Then use `commit` skill for clean conventional commits.
 8. **Document.** Durable contract, API, workflow, or gotcha changed → update repo AGENTS.md. User-facing change → update CHANGELOG. Don't create new doc files unless significant.
-9. **Remember.** Save decisions, gotchas, failures, corrections to memory (Pi: `memory` tool, Claude Code: auto-memory, Codex: built-in). Don't save obvious things — save what you'd want to know next time. If memory feels stale or contradicts current code, trust the code — update or delete the memory.
+9. **Remember.** Save decisions, gotchas, failures, corrections to memory. Don't save obvious things — save what you'd want to know next time. If memory contradicts current code, trust the code.
 10. **Handoff.** Session getting long → `compact-safe` skill to preserve constraints, or `/handoff` to create continuation doc. Don't lose context.
 
 Skip steps that don't apply. Don't ask permission for steps that do apply — just do them. External tech → validate APIs first (see below).
@@ -88,6 +88,6 @@ Skip only for: pure utility libs with stable APIs (date-fns, zod, lodash). When 
 ## Hygiene
 
 - Monthly: `/memory-insights`, `/memory-consolidate` in Pi. `/doctor`, `/memory`, `/context` in Claude Code. Check `bdata zones` for credit usage.
-- Memory hygiene: Pi auto-consolidates. Claude Code: review `~/.claude/projects/*/memory/` — delete stale entries. Codex: review `~/.codex/memories/MEMORY.md` — remove outdated task groups. If memory contradicts current code, trust the code.
+- Memory hygiene: review and prune stale memory entries monthly. If memory contradicts current code, trust the code.
 - Matt Pocock skills repo at `~/Dev/pi-optimize/mattpocock-skills`. Update with `git pull` and re-copy.
 - `~/.agents/skills/` should contain only skills that earn their place in the system prompt.
