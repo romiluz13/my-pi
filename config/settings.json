@@ -1,0 +1,28 @@
+{
+  "npmCommand": [
+    "mise",
+    "exec",
+    "node@24",
+    "--",
+    "npm"
+  ],
+  "defaultThinkingLevel": "high",
+  "compaction": {
+    "enabled": true,
+    "reserveTokens": 16384,
+    "keepRecentTokens": 30000
+  },
+  "theme": "dark",
+  "packages": [
+    "npm:pi-hermes-memory",
+    "npm:pi-subagents",
+    "npm:pi-lens",
+    "npm:pi-context-prune",
+    "npm:@narumitw/pi-statusline",
+    "npm:pi-intercom",
+    "npm:pi-prompt-template-model",
+    "npm:pi-btw",
+    "npm:@juicesharp/rpiv-ask-user-question",
+    "npm:pi-rewind"
+  ]
+}
