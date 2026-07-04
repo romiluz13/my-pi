@@ -18,7 +18,7 @@ A curated, reproducible Pi coding agent setup built on three principles:
 ### 10 Pi Packages
 
 | Package | What it does |
-|---------|-------------|
+| --------- | ------------- |
 | pi-hermes-memory | Persistent memory, session search, learns from corrections |
 | pi-subagents | Delegate to child agents — review, scout, parallel work |
 | pi-lens | LSP diagnostics, linters, formatters on every edit |
@@ -33,7 +33,7 @@ A curated, reproducible Pi coding agent setup built on three principles:
 ### External CLIs
 
 | CLI | What it does |
-|-----|-------------|
+| ----- | ------------- |
 | `bdata` (Bright Data) | Web search, scrape, discover — 5,000 free credits/month |
 | `octocode` | Code research — AST search, minify, cross-repo, PR deep-read, OQL |
 | `gh` | GitHub CLI — issues, PRs, CI |
@@ -95,7 +95,7 @@ pi
 ## What We Deliberately Rejected (and why)
 
 | Rejected | Why |
-|----------|-----|
+| ---------- | ----- |
 | MCP bridge / pi-mcp-adapter | CLI + skills is the Pi way — no subprocess bloat |
 | @octocodeai/pi-extension | Conflicts with 6 of our packages (duplicate tools) |
 | Superpowers (as package) | Bootstrap injection overrides AGENTS.md workflow — we took only the 3 unique skills |
@@ -136,10 +136,10 @@ my-pi/
 ├── LICENSE                 MIT
 ├── config/
 │   ├── settings.json       Pi settings (10 packages, high thinking, tuned compaction)
-│   ├── agents.md           Global AGENTS.md with 10-step autonomous workflow
+│   ├── agents.md           Global AGENTS.md with 10-step autonomous workflow (real file)
 │   └── prune.json          pi-context-prune config
 ├── scripts/
-│   ├── install.sh          One-command installer (packages + CLIs + skills + AGENTS.md)
+│   ├── install.sh          One-command installer (packages + CLIs + skills + AGENTS.md + symlinks)
 │   └── update.sh           Update all packages + skills
 └── skills/
     ├── brainstorming/              Adapted from Superpowers (design before code)
@@ -147,6 +147,23 @@ my-pi/
     ├── receiving-code-review/      Adapted from Superpowers (verify before implementing)
     └── README.md           Skill sources documentation
 ```
+
+## How AGENTS.md is loaded
+
+The installer creates a single source of truth at `~/.ai/AGENTS.md` and wires all three agents to load it:
+
+```
+~/.ai/AGENTS.md  (real file, 120 lines)
+     ↑              ↑              ↑
+     symlink        @import        symlink
+     Pi             Claude Code    Codex
+```
+
+- **Pi**: `~/.pi/agent/AGENTS.md` → symlink to `~/.ai/AGENTS.md`
+- **Claude Code**: `~/.claude/CLAUDE.md` contains `@~/.ai/AGENTS.md`
+- **Codex**: `~/.codex/AGENTS.md` → symlink to `~/.ai/AGENTS.md`
+
+All three agents read the same 120-line workflow on every session start.
 
 ## License
 

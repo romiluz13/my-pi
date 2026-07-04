@@ -236,6 +236,31 @@ else
   info "Global AGENTS.md installed"
 fi
 
+# Create symlinks so all agents load the same brain
+# Pi loads from ~/.pi/agent/AGENTS.md
+mkdir -p "${HOME}/.pi/agent"
+ln -sfn "${AI_DIR}/AGENTS.md" "${HOME}/.pi/agent/AGENTS.md"
+info "Pi: ~/.pi/agent/AGENTS.md symlink created"
+
+# Codex loads from ~/.codex/AGENTS.md
+mkdir -p "${HOME}/.codex"
+ln -sfn "${AI_DIR}/AGENTS.md" "${HOME}/.codex/AGENTS.md"
+info "Codex: ~/.codex/AGENTS.md symlink created"
+
+# Claude Code uses @import in ~/.claude/CLAUDE.md
+mkdir -p "${HOME}/.claude"
+if [ -f "${HOME}/.claude/CLAUDE.md" ]; then
+  if ! grep -q "@~/.ai/AGENTS.md" "${HOME}/.claude/CLAUDE.md" 2>/dev/null; then
+    echo "@~/.ai/AGENTS.md" >> "${HOME}/.claude/CLAUDE.md"
+    info "Claude Code: @import added to CLAUDE.md"
+  else
+    info "Claude Code: @import already present"
+  fi
+else
+  echo "@~/.ai/AGENTS.md" > "${HOME}/.claude/CLAUDE.md"
+  info "Claude Code: CLAUDE.md created with @import"
+fi
+
 # ── Done ───────────────────────────────────────────────────────────────────
 
 echo -e "\n${BOLD}${GREEN}✓ my-pi setup complete!${RESET}\n"
