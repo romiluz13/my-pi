@@ -1,7 +1,7 @@
 ---
 description: Debug an issue — build feedback loop, find root cause, fix
 argument-hint: "<what's wrong>"
-skill: diagnosing-bugs, tdd
+skill: diagnosing-bugs
 ---
 Debug the following issue. Follow workflow step 5 (failure path).
 

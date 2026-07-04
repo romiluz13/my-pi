@@ -1,6 +1,6 @@
 ---
 description: Review current diff — parallel reviewers, silent failure hunt, anti-anchored
-skill: code-review, receiving-code-review, improve-codebase-architecture
+skill: code-review
 subagent: reviewer
 ---
 Review the current uncommitted changes. Follow workflow step 6.

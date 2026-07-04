@@ -1,7 +1,7 @@
 ---
 description: Plan a feature — understand, brainstorm, write spec + tickets
 argument-hint: "<feature description>"
-skill: brainstorming, to-spec, to-tickets, wayfinder, grill-with-docs, prototype, research, octocode-research
+skill: brainstorming
 ---
 Plan the following feature end-to-end. Follow workflow steps 1-3.
 

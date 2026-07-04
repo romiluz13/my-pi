@@ -1,6 +1,6 @@
 ---
 description: Ship — verify, commit, document (workflow steps 7-8)
-skill: verification-before-completion, commit, github
+skill: verification-before-completion
 ---
 Ship the current work. Follow workflow steps 7-8.
 

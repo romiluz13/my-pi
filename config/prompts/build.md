@@ -1,7 +1,7 @@
 ---
 description: Build a feature — implement, test, fix (workflow steps 4-5)
 argument-hint: "<what to build>"
-skill: tdd, diagnosing-bugs
+skill: tdd
 ---
 Build the following. Follow workflow steps 4-5.
 

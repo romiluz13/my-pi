@@ -1,7 +1,7 @@
 ---
 description: Research a topic — parallel fan-out across web, GitHub, codebase
 argument-hint: "<topic to research>"
-skill: research, octocode-research
+skill: research
 ---
 Research the following topic. Follow workflow step 1 (fan-out research).
 
