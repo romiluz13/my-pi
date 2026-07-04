@@ -13,7 +13,7 @@ Single source of truth for every AI coding tool on this machine (Claude Code, Co
 - Canonical file: `~/.ai/AGENTS.md`. `~/.claude/CLAUDE.md` imports it via `@~/.ai/AGENTS.md`. `~/.codex/AGENTS.md` is a symlink here.
 - Personal skills: edit ONLY in `~/Dev/ux-skills/`. Install to `~/.claude/skills/` ONLY via `~/Dev/ux-skills/scripts/install-symlinks.sh`.
 - `~/.agents/skills/` is for third-party `npx skills` installs only, not personal skills.
-- cc10x is installed (`cc10x@cc10x`, v11.1.0). Do not remove or reinstall without explicit user request.
+- cc10x is installed (`cc10x@cc10x`, v12.1.0). Do not remove or reinstall without explicit user request.
 
 ## Pi
 
@@ -28,7 +28,7 @@ Single source of truth for every AI coding tool on this machine (Claude Code, Co
 
 When given a task, follow this flow automatically. The workflow IS the skill router — each step names the exact skill. Don't spawn a router subagent.
 
-1. **Understand.** Read repo AGENTS.md, relevant files, existing patterns. Search memory. Fan out subagents for parallel research (web, GitHub, codebase — each reads a different source). If ambiguous, ask ONE clarifying question. If clear, proceed.
+1. **Understand (ORIENT).** If the user wants to understand (not change), explain inline. Do NOT fall through to build. No write agents, no workflow. If the user wants to change something: read repo AGENTS.md, relevant files, existing patterns. Search memory. Fan out subagents for parallel research (web, GitHub, codebase — each reads a different source). If ambiguous, ask ONE clarifying question. If clear, proceed.
 2. **Brainstorm (new features).** Before building anything new → `brainstorming` skill: explore context, ask questions one at a time, propose approaches, present design, get user approval.
 3. **Plan (big tasks only).** Pick based on the situation:
    - **You know what to build** (>3 files, new feature) → `/to-spec` then `/to-tickets`.
@@ -37,10 +37,10 @@ When given a task, follow this flow automatically. The workflow IS the skill rou
    - **Design question answerable by thinking** → `grill-with-docs` (relentless interview to stress-test the plan).
    - **Need evidence from primary sources** → `research` or `octocode-research` skill (background agent, cited markdown).
    - Bug fix or small change → skip to step 4.
-4. **Build.** Implement following existing patterns. Don't over-engineer. Python → use `uv` (not pip/venv). LSP runs on every edit via pi-lens — fix type errors immediately.
-5. **Test.** Run relevant tests. No tests for changed code → write them (`tdd` skill: test first, see fail, implement, see pass). Tests fail → `diagnosing-bugs` skill (build feedback loop, root cause, not symptom) → fix → return to step 5.
-6. **Review.** Fan out 2-3 reviewer subagents with different focuses (standards, spec, security). Critical code → `code-review` skill (parallel standards + spec). Receiving feedback → `receiving-code-review` skill (verify before implementing, push back if wrong). Architecture issues found → `improve-codebase-architecture` skill → return to step 4.
-7. **Verify + commit.** Before claiming done → `verification-before-completion` skill: run the project's test/lint/typecheck command, read full output, confirm. Evidence before claims. Then use `commit` skill for clean conventional commits. Use `github` skill for PRs, issues, and CI via `gh` CLI. CI fails → `diagnosing-bugs` → fix → return to step 5.
+4. **Build.** Use `/implement` as the execution wrapper (drives TDD + code-review + commit). Follow existing patterns. Don't over-engineer. Python → use `uv` (not pip/venv). LSP runs on every edit via pi-lens — fix type errors immediately.
+5. **Test.** Run relevant tests. No tests for changed code → write them (`tdd` skill: test first, see fail, implement, see pass). Exit 1 from import/syntax error is NOT a real RED — a genuine RED is a behavioral failure. Tests fail → `diagnosing-bugs` skill (build feedback loop, root cause, not symptom) → fix → return to step 5.
+6. **Review.** Fan out 2-3 reviewer subagents with different focuses (standards, spec, security). Give reviewers fresh context — only the diff, not the builder's reasoning (anti-anchored review). Critical code → `code-review` skill. Receiving feedback → `receiving-code-review` skill (verify before implementing, push back if wrong). Grep changed files for swallowed errors: empty catches, discarded promises, TODO/FIXME, debug logging left in. Architecture issues → `improve-codebase-architecture` skill → return to step 4.
+7. **Verify + commit.** You are an independent auditor — a passing test or green build is never sufficient by itself. Before verifying, list every claim from prior steps, mark each UNVERIFIED, then independently check each. Before claiming done → `verification-before-completion` skill: run the project's test/lint/typecheck command, read full output, confirm. Then use `commit` skill for clean conventional commits. Use `github` skill for PRs, issues, and CI via `gh` CLI. CI fails → `diagnosing-bugs` → fix → return to step 5.
 8. **Document.** Prevent unstructured docs — no random markdown files, no duplicating what the code says.
    - Durable gotcha/workflow change → update repo AGENTS.md.
    - Domain term resolved → update `CONTEXT.md` (`domain-modeling` skill).
@@ -49,7 +49,9 @@ When given a task, follow this flow automatically. The workflow IS the skill rou
    - Specs and tickets → GitHub Issues (`/to-spec`, `/to-tickets`), NOT repo filesystem.
    - Create files lazily — only when you have something non-inferable to write.
 9. **Remember.** Save decisions, gotchas, failures, corrections to memory. Don't save obvious things — save what you'd want to know next time. If memory contradicts current code, trust the code.
-10. **Handoff.** Session getting long → `compact-safe` skill to preserve constraints, or `/handoff` to create continuation doc. Don't lose context.
+10. **Handoff.** Session getting long → `compact-safe` skill (KEEP constraints and errors verbatim, SUMMARIZE resolved decisions, DROP prose and diary) or `/handoff` to create continuation doc. Don't lose context.
+
+**Context hygiene:** Keep steps 1-3 in one unbroken context window. Don't compact or clear until after planning is complete — compaction mid-planning loses the thread.
 
 ## Subagent strategy
 
@@ -84,7 +86,7 @@ If `/to-spec` or `/to-tickets` fails, configure the issue tracker first. Externa
 - **UI** (3): `frontend-design` (aesthetic direction), `impeccable` (UI quality/polish), `web-design-guidelines` (UI review) — auto-trigger when building or reviewing UI.
 - **Web** (8): `search`, `scrape`, `discover-api`, `data-feeds`, `live-research`, `agent-browser`, `rag-pipeline`, `brightdata-cli` — auto-trigger for web tasks. `bright-data-best-practices` is a model-invoked reference for BD APIs. Use `bdata` CLI, not MCP.
 - **Code research** (5): `octocode` (CLI quick-reference), `octocode-research` (investigation workflow), `octocode-brainstorming` (evidence validation), `octocode-rfc-generator`, `octocode-roast` — auto-trigger for evidence-first research, RFCs, or code critique.
-- **User-invoked** (5): `/teach`, `/triage`, `/writing-great-skills`, `/setup-pre-commit`, `/wizard` (interactive setup for third-party services) — user types these explicitly.
+- **User-invoked** (6): `/teach`, `/triage`, `/writing-great-skills`, `/setup-pre-commit`, `/wizard` (interactive setup for third-party services), `/implement` (execution wrapper: drives TDD + code-review + commit) — user types these explicitly.
 - **Internal reference** (2): `codebase-design` (module/interface vocabulary), `domain-modeling` (domain glossary) — auto-loaded by other skills (tdd, grill-with-docs, to-spec, improve-codebase-architecture).
 - **Auto-safety** (2): `git-guardrails-claude-code`, `resolving-merge-conflicts` — auto-trigger on git operations and merge conflicts.
 
