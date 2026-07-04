@@ -28,7 +28,7 @@ Single source of truth for every AI coding tool on this machine (Claude Code, Co
 
 When given a task, follow this flow automatically. The workflow IS the skill router — each step names the exact skill. Don't spawn a router subagent.
 
-1. **Understand.** Read repo AGENTS.md, relevant files, existing patterns. Search memory for relevant context. If ambiguous, ask ONE clarifying question. If clear, proceed.
+1. **Understand.** Read repo AGENTS.md, relevant files, existing patterns. Search memory. Fan out subagents for parallel research (web, GitHub, codebase — each reads a different source). If ambiguous, ask ONE clarifying question. If clear, proceed.
 2. **Brainstorm (new features).** Before building anything new → `brainstorming` skill: explore context, ask questions one at a time, propose approaches, present design, get user approval.
 3. **Plan (big tasks only).** Pick based on the situation:
    - **You know what to build** (>3 files, new feature) → `/to-spec` then `/to-tickets`.
@@ -38,9 +38,9 @@ When given a task, follow this flow automatically. The workflow IS the skill rou
    - **Need evidence from primary sources** → `research` or `octocode-research` skill (background agent, cited markdown).
    - Bug fix or small change → skip to step 4.
 4. **Build.** Implement following existing patterns. Don't over-engineer. Python → use `uv` (not pip/venv). LSP runs on every edit via pi-lens — fix type errors immediately.
-5. **Test.** Run relevant tests. No tests for changed code → write them (`tdd` skill: test first, see fail, implement, see pass). Tests fail → `diagnosing-bugs` skill (build feedback loop, root cause, not symptom).
-6. **Review.** Spawn reviewer subagent: "Use reviewer to review this diff." Critical code → `code-review` skill (parallel standards + spec). Receiving feedback → `receiving-code-review` skill (verify before implementing, push back if wrong). Architecture issues found → `improve-codebase-architecture` skill.
-7. **Verify + commit.** Before claiming done → `verification-before-completion` skill: run verification command, read full output, confirm. Evidence before claims. Then use `commit` skill for clean conventional commits. Use `github` skill for PRs, issues, and CI via `gh` CLI.
+5. **Test.** Run relevant tests. No tests for changed code → write them (`tdd` skill: test first, see fail, implement, see pass). Tests fail → `diagnosing-bugs` skill (build feedback loop, root cause, not symptom) → fix → return to step 5.
+6. **Review.** Fan out 2-3 reviewer subagents with different focuses (standards, spec, security). Critical code → `code-review` skill (parallel standards + spec). Receiving feedback → `receiving-code-review` skill (verify before implementing, push back if wrong). Architecture issues found → `improve-codebase-architecture` skill → return to step 4.
+7. **Verify + commit.** Before claiming done → `verification-before-completion` skill: run the project's test/lint/typecheck command, read full output, confirm. Evidence before claims. Then use `commit` skill for clean conventional commits. Use `github` skill for PRs, issues, and CI via `gh` CLI. CI fails → `diagnosing-bugs` → fix → return to step 5.
 8. **Document.** Prevent unstructured docs — no random markdown files, no duplicating what the code says.
    - Durable gotcha/workflow change → update repo AGENTS.md.
    - Domain term resolved → update `CONTEXT.md` (`domain-modeling` skill).
@@ -51,7 +51,31 @@ When given a task, follow this flow automatically. The workflow IS the skill rou
 9. **Remember.** Save decisions, gotchas, failures, corrections to memory. Don't save obvious things — save what you'd want to know next time. If memory contradicts current code, trust the code.
 10. **Handoff.** Session getting long → `compact-safe` skill to preserve constraints, or `/handoff` to create continuation doc. Don't lose context.
 
-Skip steps that don't apply. Don't ask permission for steps that do apply — just do them. External tech → validate APIs first (see below).
+## Subagent strategy
+
+Fan out for read-only work. Stay solo for write work. Context is everything — parallel research multiplies it, parallel building destroys it.
+
+- **Parallel fan-out (read-only, no conflicts):**
+  - Web research: spawn N subagents, each searches a different source (bdata, octocode, gh, docs).
+  - GitHub research: one subagent per repo or query.
+  - Code research: one subagent per module or file group.
+  - Review: spawn 2-3 reviewers with different focuses (standards, spec, security).
+  - Validation: one subagent per external tech to validate APIs.
+- **Sequential (one writer, no conflicts):**
+  - Building: ONE agent writes code. Never parallel-write to the same files.
+  - Testing: ONE agent runs tests and fixes failures.
+  - Committing: ONE agent commits.
+- **Parallel + merge (careful):**
+  - Independent file changes (different modules, no shared deps): parallel OK with `worktree: true`, then merge.
+  - Always verify merge has no conflicts before proceeding.
+- **Safety rules:**
+  - pi-rewind does NOT checkpoint subagent file changes — run `git status` after subagent writes to trigger a checkpoint.
+  - pi-intercom handles one pending ask at a time — don't fan out decision-needing subagents simultaneously.
+  - Always `wait()` for async workers to finish before launching reviewers.
+
+Default: fan out research, build solo, review in parallel.
+
+If `/to-spec` or `/to-tickets` fails, configure the issue tracker first. External tech → validate APIs before step 4 (see below).
 
 ## Domain skills (auto-trigger from description)
 
