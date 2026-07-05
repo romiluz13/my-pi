@@ -100,16 +100,15 @@ info "Native modules rebuilt"
 step "Configuring web search (pi-web-access)"
 
 if [ ! -f "${HOME}/.pi/web-search.json" ]; then
-  cat > "${HOME}/.pi/web-search.json" << 'WSEOF'
+	cat >"${HOME}/.pi/web-search.json" <<'WSEOF'
 {
   "provider": "brave",
   "workflow": "summary-review"
 }
 WSEOF
-  info "Created ~/.pi/web-search.json (add your API keys: braveApiKey, tavilyApiKey, geminiApiKey)"
+	info "Created ~/.pi/web-search.json (add your API keys: braveApiKey, tavilyApiKey, geminiApiKey)"
 else
-  info "web-search.json already exists — keeping your keys"
+	info "web-search.json already exists — keeping your keys"
 fi
 
 # ── Done ───────────────────────────────────────────────────────────────────
-
