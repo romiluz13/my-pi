@@ -26,8 +26,8 @@ When given a task, follow this flow automatically. The workflow IS the skill rou
    - **Need evidence from primary sources** → `research` or `octocode-research` skill (background agent, cited markdown).
    - Bug fix or small change → skip to step 4.
 4. **Build.** Use `/implement` as the execution wrapper (drives TDD + code-review + commit). Follow existing patterns. Don't over-engineer. Python → use `uv` (not pip/venv). Fix type/LSP errors immediately when detected.
-5. **Test.** Run relevant tests. No tests for changed code → write them (`tdd` skill: test first, see fail, implement, see pass). Exit 1 from import/syntax error is NOT a real RED — a genuine RED is a behavioral failure. Tests fail → `diagnosing-bugs` skill (build feedback loop, root cause, not symptom) → fix → return to step 5.
-6. **Review.** Fan out 2-3 reviewer subagents with different focuses (standards, spec, security). Give reviewers fresh context — only the diff, not the builder's reasoning (anti-anchored review). Critical code → `code-review` skill. Receiving feedback → `receiving-code-review` skill (verify before implementing, push back if wrong). Grep changed files for swallowed errors: empty catches, discarded promises, TODO/FIXME, debug logging left in. Architecture issues → `improve-codebase-architecture` skill → return to step 4.
+5. **Test.** Run relevant tests. No tests for changed code → write them (`tdd` skill: test first, see fail, implement, see pass). Exit 1 from import/syntax error is NOT a real RED — a genuine RED is a behavioral failure. Tests fail → `diagnosing-bugs` skill (build feedback loop, root cause, not symptom) → fix → return to step 5. No hypothesis without a repro loop — build one first (failing test → curl → CLI diff → headless browser → trace replay → throwaway harness → fuzz → git bisect → differential → human last). If no loop can be built, STOP — return BLOCKED. Generate 3-5 ranked hypotheses before testing any. Never simplify away a safety check during refactoring — verify it's dead code with a test first.
+6. **Review.** Fan out 2-3 reviewer subagents with different focuses (standards, spec, security). Give reviewers fresh context — only the diff, not the builder's reasoning (anti-anchored review). Before dispatching, grep your own drafted prompt for bias phrases ("do not flag", "should be fine", "no need to check") — if found, rewrite. An APPROVE with zero findings AND <3 file:line citations is a rubber stamp — trigger fallback verification. Critical code → `code-review` skill. Receiving feedback → `receiving-code-review` skill (verify before implementing, push back if wrong). Grep changed files for swallowed errors: empty catches, discarded promises, TODO/FIXME, debug logging left in. Architecture issues → `improve-codebase-architecture` skill → return to step 4.
 7. **Verify + commit.** You are an independent auditor — a passing test or green build is never sufficient by itself. Before verifying, list every claim from prior steps, mark each UNVERIFIED, then independently check each. Before claiming done → `verification-before-completion` skill: run the project's test/lint/typecheck command, read full output, confirm. Then use `commit` skill for clean conventional commits. Use `github` skill for PRs, issues, and CI via `gh` CLI. CI fails → `diagnosing-bugs` → fix → return to step 5.
 8. **Document.** Prevent unstructured docs — no random markdown files, no duplicating what the code says.
    - Durable gotcha/workflow change → update repo AGENTS.md.
@@ -36,7 +36,7 @@ When given a task, follow this flow automatically. The workflow IS the skill rou
    - User-facing change → update CHANGELOG.
    - Specs and tickets → GitHub Issues (`/to-spec`, `/to-tickets`), NOT repo filesystem.
    - Create files lazily — only when you have something non-inferable to write.
-9. **Remember.** Save decisions, gotchas, failures, corrections to memory. Don't save obvious things — save what you'd want to know next time. If memory contradicts current code, trust the code.
+9. **Remember.** Save decisions, gotchas, failures, corrections to memory. Don't save obvious things — save what you'd want to know next time. If memory contradicts current code, trust the code. Capture memory payload from subagents FIRST, before validation — compaction can fire between return and parse. Non-blocking findings go to memory as `Deferred:`, NOT as TODO tasks.
 10. **Handoff.** Session getting long → `compact-safe` skill (KEEP constraints and errors verbatim, SUMMARIZE resolved decisions, DROP prose and diary) or `/handoff` to create continuation doc. Don't lose context.
 
 **Context hygiene:** Keep steps 1-3 in one unbroken context window. Don't compact or clear until after planning is complete — compaction mid-planning loses the thread.
@@ -82,6 +82,8 @@ If `/to-spec` or `/to-tickets` fails, configure the issue tracker first. Externa
 ## Working style
 
 - Trust but verify. State results directly — no "Let me..." narration, no end-of-turn recaps unless asked.
+- Spirit over letter: a loophole that lets you skip a gate is a bug in the spec, not permission to skip.
+- Dispatch by reference, not by blob — pass file paths, never pasted file bodies. Subagents write full output to files, return only path + thin verdict.
 - Don't add features, abstractions, or error handling beyond what the task requires. Three similar lines beats a premature helper.
 - Default to writing no comments. Explain WHY (hidden constraint, non-obvious invariant) never WHAT.
 - Never mark a task complete if tests fail, implementation is partial, or there are unresolved errors.
