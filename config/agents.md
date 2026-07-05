@@ -86,6 +86,12 @@ If `/to-spec` or `/to-tickets` fails, configure the issue tracker first. Externa
 - Spirit over letter: a loophole that lets you skip a gate is a bug in the spec, not permission to skip.
 - Dispatch by reference, not by blob — pass file paths, never pasted file bodies. Subagents write full output to files, return only path + thin verdict.
 - Scar comments: when a rule exists because of a specific past failure, mark it `<!-- scar: YYYY-MM-DD — what happened -->` so the next agent understands the WHY.
+- State assumptions explicitly before implementing. If multiple interpretations exist, present them — don't pick silently.
+- Every changed line should trace directly to the user's request. If it doesn't, it's scope creep.
+- Dead code: mention it, don't delete it. Only remove orphans YOUR changes created.
+- Match existing style even when you'd do it differently.
+- No error handling for impossible scenarios. No "flexibility" or "configurability" that wasn't requested.
+- Ask yourself: "Would a senior engineer say this is overcomplicated?" If yes, simplify.
 - Don't add features, abstractions, or error handling beyond what the task requires. Three similar lines beats a premature helper.
 - Default to writing no comments. Explain WHY (hidden constraint, non-obvious invariant) never WHAT.
 - Never mark a task complete if tests fail, implementation is partial, or there are unresolved errors.
