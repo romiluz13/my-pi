@@ -35,10 +35,20 @@
  * 7. Thought-it-through gate (pre-loop contract)
  */
 
-import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync, appendFileSync } from "node:fs";
+import {
+	existsSync,
+	mkdirSync,
+	readFileSync,
+	readdirSync,
+	writeFileSync,
+	appendFileSync,
+} from "node:fs";
 import { join } from "node:path";
 import { randomUUID } from "node:crypto";
-import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
+import type {
+	ExtensionAPI,
+	ExtensionContext,
+} from "@earendil-works/pi-coding-agent";
 import { Key, matchesKey } from "@earendil-works/pi-tui";
 
 // ─── Constants ──────────────────────────────────────────────────────────────
@@ -51,15 +61,46 @@ const PLATEAU_TOLERANCE = 0.3;
 const PASS_THRESHOLD = 7.0;
 const SANTA_MAX_ROUNDS = 3;
 
-type Phase = "plan" | "build" | "review" | "verify" | "ship" | "done" | "rejected";
+type Phase =
+	| "plan"
+	| "build"
+	| "review"
+	| "verify"
+	| "ship"
+	| "done"
+	| "rejected";
 type WorkflowType = "build" | "debug" | "plan";
 
 const PHASE_TOOLS: Record<Phase, string[] | null> = {
 	// null = no restriction (full toolset). Non-null = allowlist enforced by gate.
-	plan: ["read", "grep", "find", "ls", "lsp_diagnostics", "lsp_navigation", "module_report", "read_symbol", "read_enclosing", "ast_grep_search", "ast_grep_outline", "ask_user_question"],
+	plan: [
+		"read",
+		"grep",
+		"find",
+		"ls",
+		"lsp_diagnostics",
+		"lsp_navigation",
+		"module_report",
+		"read_symbol",
+		"read_enclosing",
+		"ast_grep_search",
+		"ast_grep_outline",
+		"ask_user_question",
+	],
 	build: null, // full toolset — the generator needs write/edit/bash
 	review: null, // reviewer needs read + subagent dispatch
-	verify: ["read", "bash", "grep", "find", "ls", "lsp_diagnostics", "lens_diagnostics", "ast_grep_search", "subagent", "wait"],
+	verify: [
+		"read",
+		"bash",
+		"grep",
+		"find",
+		"ls",
+		"lsp_diagnostics",
+		"lens_diagnostics",
+		"ast_grep_search",
+		"subagent",
+		"wait",
+	],
 	ship: ["read", "bash", "grep", "find", "ls", "ask_user_question"],
 	done: null,
 	rejected: null,
@@ -124,14 +165,28 @@ function workflowEventsPath(uuid: string): string {
 function persist(state: LoopState): void {
 	state.updatedAt = new Date().toISOString();
 	ensureWorkflowsDir();
-	writeFileSync(workflowPath(state.workflowUuid), JSON.stringify(state, null, 2), "utf-8");
+	writeFileSync(
+		workflowPath(state.workflowUuid),
+		JSON.stringify(state, null, 2),
+		"utf-8",
+	);
 }
 
 function logEvent(state: LoopState, event: string): void {
 	ensureWorkflowsDir();
-	const line = JSON.stringify({ ts: new Date().toISOString(), event, phase: state.phase, iteration: state.iteration }) + "\n";
+	const line =
+		JSON.stringify({
+			ts: new Date().toISOString(),
+			event,
+			phase: state.phase,
+			iteration: state.iteration,
+		}) + "\n";
 	appendFileSync(workflowEventsPath(state.workflowUuid), line, "utf-8");
-	state.statusHistory.push({ event, ts: new Date().toISOString(), phase: state.phase });
+	state.statusHistory.push({
+		event,
+		ts: new Date().toISOString(),
+		phase: state.phase,
+	});
 }
 
 function recordStatus(ctx: ExtensionContext): void {
@@ -140,7 +195,13 @@ function recordStatus(ctx: ExtensionContext): void {
 		return;
 	}
 	const phase = ctx.ui.theme.fg("accent", active.phase);
-	const iter = active.iteration > 0 ? ctx.ui.theme.fg("warning", ` iter ${active.iteration}/${active.maxIterations}`) : "";
+	const iter =
+		active.iteration > 0
+			? ctx.ui.theme.fg(
+					"warning",
+					` iter ${active.iteration}/${active.maxIterations}`,
+				)
+			: "";
 	ctx.ui.setStatus("loop", `🔁 ${phase}${iter}`);
 }
 
@@ -177,8 +238,16 @@ async function steer(ctx: ExtensionContext, message: string): Promise<void> {
 
 function detectType(request: string): WorkflowType {
 	const r = request.toLowerCase();
-	if (/\b(debug|bug|fix|broken|failing|error|crash|regression|diagnos)\b/.test(r)) return "debug";
-	if (/\b(plan|design|architect|spec|rfc|investigat|research|brainstorm)\b/.test(r)) return "plan";
+	if (
+		/\b(debug|bug|fix|broken|failing|error|crash|regression|diagnos)\b/.test(r)
+	)
+		return "debug";
+	if (
+		/\b(plan|design|architect|spec|rfc|investigat|research|brainstorm)\b/.test(
+			r,
+		)
+	)
+		return "plan";
 	return "build";
 }
 
@@ -222,10 +291,16 @@ function extractContract(text: string): Intent | null {
 		return {
 			goal: String(raw.goal ?? "").trim(),
 			nonGoals: Array.isArray(raw.nonGoals) ? raw.nonGoals.map(String) : [],
-			constraints: Array.isArray(raw.constraints) ? raw.constraints.map(String) : [],
-			acceptanceCriteria: Array.isArray(raw.acceptanceCriteria) ? raw.acceptanceCriteria.map(String) : [],
+			constraints: Array.isArray(raw.constraints)
+				? raw.constraints.map(String)
+				: [],
+			acceptanceCriteria: Array.isArray(raw.acceptanceCriteria)
+				? raw.acceptanceCriteria.map(String)
+				: [],
 			reconciliationAnchor: String(raw.reconciliationAnchor ?? "").trim(),
-			openDecisions: Array.isArray(raw.openDecisions) ? raw.openDecisions.map(String) : [],
+			openDecisions: Array.isArray(raw.openDecisions)
+				? raw.openDecisions.map(String)
+				: [],
 		};
 	} catch {
 		return null;
@@ -236,11 +311,15 @@ function extractContract(text: string): Intent | null {
  * Five-mode pre-flight check. Returns a reason string if REJECTED, null if OK.
  */
 function preFlightCheck(intent: Intent): string | null {
-	if (!intent.goal) return "REJECTED (failure mode 4 — 2am-guess): no machine-verifiable goal. The loop will commit a guess. Define a done-criterion.";
+	if (!intent.goal)
+		return "REJECTED (failure mode 4 — 2am-guess): no machine-verifiable goal. The loop will commit a guess. Define a done-criterion.";
 	if (/tests?\s+pass/i.test(intent.goal) && !/and/i.test(intent.goal)) {
 		return "REJECTED (failure mode 3 — Goodhart): done-criterion is 'tests pass' with no external anchor. The agent can pass by deleting tests. Add a reconciliation anchor.";
 	}
-	if (!intent.reconciliationAnchor || /my own tests? pass/i.test(intent.reconciliationAnchor)) {
+	if (
+		!intent.reconciliationAnchor ||
+		/my own tests? pass/i.test(intent.reconciliationAnchor)
+	) {
 		return "REJECTED (failure mode 3 — Goodhart): no reconciliation anchor. The done-criterion must anchor to an external fact you cannot rewrite. If none exists, freeze a reference before iteration 1.";
 	}
 	if (intent.openDecisions.length > 0) {
@@ -270,21 +349,83 @@ function dishonestyHits(text: string): string[] {
 	return hits;
 }
 
-// ─── Phase steering prompts ─────────────────────────────────────────────────
+// ─── Phase steering prompts (enriched with Archon steals — all steering text) ──
+
+/** Format the intent's nonGoals as a respect-block for the reviewer. Steal 4. */
+function nonGoalsBlock(state: LoopState): string {
+	const ng = state.intent?.nonGoals ?? [];
+	if (ng.length === 0) return "";
+	return `\n\n**NOT Building (scope limits — DO NOT flag these as missing features):**\n${ng.map((g) => `- ${g}`).join("\n")}\n`;
+}
 
 function phasePrompt(state: LoopState, phase: Phase): string {
 	const base = `[LOOP ENGINE — phase: ${phase}, iteration: ${state.iteration}/${state.maxIterations}]\n`;
 	switch (phase) {
 		case "plan":
-			return `${base}PLAN phase (read-only — write/edit/bash-mutating are gated off). Explore the codebase, understand the target, and write a plan to .loop-plan.md. Dispatch a fresh reviewer subagent (anti-anchored: give it the plan PATH, not the body) to review the plan. Report when the plan is written and reviewed.`;
+			return `${base}PLAN phase (read-only — write/edit/bash-mutating are gated off). Explore the codebase, understand the target, and write a plan to .loop-plan.md.
+
+**Patterns to Mirror (Steal 3 — extract BEFORE planning):** Use read/grep/find/lsp_* to produce a patterns table with ACTUAL code snippets copied from the codebase (not invented) + file:line refs:
+| Category | File:Lines | Pattern | Code Snippet |
+|----------|-----------|---------|--------------|
+| NAMING | path:10-15 | … | \`actual snippet\` |
+| ERRORS | path:5-20 | … | \`actual snippet\` |
+| LOGGING | path:1-10 | … | \`actual snippet\` |
+| TESTS | path:1-30 | … | \`actual snippet\` |
+Write the plan to .loop-plan.md, including a MIRROR: {file:lines} reference on each future task so BUILD follows real patterns. Then dispatch a fresh reviewer subagent (anti-anchored: give it the plan PATH, not the body) to review the plan.
+
+**PLAN_CHECKPOINT (satisfy ALL before signaling completion):**
+- [ ] At least 3 similar implementations found with file:line refs
+- [ ] Code snippets in the patterns table are ACTUAL (copy-pasted from codebase, not invented)
+- [ ] Plan written to .loop-plan.md with MIRROR refs on each task
+- [ ] Plan reviewed by a fresh subagent
+Report when the checkpoint is satisfied.`;
 		case "build":
-			return `${base}BUILD phase (full toolset). Implement per the plan. TDD: write the test first, watch it fail, implement, watch it pass. Exit 1 from import/syntax error is NOT a real RED — a genuine RED is a behavioral failure. When done, report what changed and run the project's test command.`;
+			return `${base}BUILD phase (full toolset). Implement per the plan (.loop-plan.md). Read each task's MIRROR: {file:lines} reference and follow that real pattern exactly.
+
+**TDD:** write the test first, watch it fail, implement, watch it pass. Exit 1 from import/syntax error is NOT a real RED — a genuine RED is a behavioral failure.
+
+**Per-task validation (Steal 5 — the golden rule: never accumulate broken state):** After EVERY file change, run the project's type-check/lint (e.g. \`npm run type-check\`, \`bun run type-check\`, \`uv run mypy\`, \`cargo check\`, \`go build ./...\`). If it fails, FIX IT before the next task — do not move on with broken state. pi-lens surfaces live diagnostics; this is the active project-wide check that complements it.
+
+**BUILD_CHECKPOINT (satisfy ALL before signaling completion):**
+- [ ] Every task implemented per its MIRROR reference
+- [ ] Type-check/lint run after every file change and passing
+- [ ] Tests written and passing (genuine GREEN, not import/syntax exit)
+- [ ] No deviation from the plan without it being documented
+Report what changed and the final test result.`;
 		case "review":
-			return `${base}REVIEW phase. Dispatch 2-3 reviewer subagents in parallel (standards, spec, security) via the subagent tool — give each the diff PATH (git diff > .loop-diff.patch first), never the body. Every finding at confidence ≥80 needs a verbatim file:line quote or it's auto-demoted. Grep changed files for swallowed errors (empty catches, discarded promises, TODO/FIXME, debug logging). Report findings by severity.`;
+			return `${base}REVIEW phase. Run \`git diff > .loop-diff.patch\` first, then dispatch 5 reviewer subagents in parallel (Steal 1 — each narrow, give each the diff PATH, never the body):
+1. **code-review** — quality, pattern compliance, bugs (logic/null/race/security)
+2. **error-handling** — swallowed errors, empty catches, discarded promises, unhandled rejections
+3. **test-coverage** — missing tests, untested edge cases, tests that don't assert the behavior
+4. **comment-quality** — stale comments, misleading docs, TODO/FIXME left in, debug logging
+5. **docs-impact** — does a docs/CHANGELOG/AGENTS.md change need to happen?
+
+Every finding at confidence ≥80 needs a verbatim file:line quote or it's auto-demoted. Synthesize the 5 reports by severity (CRITICAL/HIGH/MEDIUM/LOW).${nonGoalsBlock(state)}
+
+**REVIEW_CHECKPOINT (satisfy ALL before signaling completion):**
+- [ ] 5 reviewers dispatched in parallel, each got the diff PATH (not the body)
+- [ ] Findings synthesized by severity
+- [ ] Every CRITICAL/HIGH finding has a file:line quote
+- [ ] nonGoals (above) respected — not flagged as missing features
+Report findings by severity.`;
 		case "verify":
-			return `${base}VERIFY phase (read/bash/lsp only — write/edit gated off). You are an INDEPENDENT verifier; a separate reviewer, not the builder. Run: (1) the project's test/lint/typecheck, (2) test-honesty grep on changed files for: getByTestId('-mock'), 'as any', '.find(', 'setTimeout(' waits, skipped tests (xit/test.skip), deleted test files — a hit means that test's PASS doesn't count. (3) Reconciliation: diff against the frozen reference anchor from the contract. Dispatch TWO fresh reviewer subagents (santa-method${state.crossModel ? " — reviewer B from a DIFFERENT model family than A" : ""}) that must CONVERGE. Score 0-10. Report score + convergence.`;
+			return `${base}VERIFY phase (read/bash/lsp only — write/edit gated off). You are an INDEPENDENT verifier; a separate reviewer, not the builder. Run: (1) the project's test/lint/typecheck, (2) test-honesty grep on changed files for: getByTestId('-mock'), 'as any', '.find(', 'setTimeout(' waits, skipped tests (xit/test.skip), deleted test files — a hit means that test's PASS doesn't count. (3) Reconciliation: diff against the frozen reference anchor from the contract. Dispatch TWO fresh reviewer subagents (santa-method${state.crossModel ? " — reviewer B from a DIFFERENT model family than A" : ""}) that must CONVERGE. Score 0-10.
+
+**VERIFY_CHECKPOINT (satisfy ALL before scoring):**
+- [ ] Project test/lint/typecheck run, full output read
+- [ ] Test-honesty grep run, any hits disqualified from PASS
+- [ ] Reconciliation diff vs frozen reference checked
+- [ ] Two fresh reviewers dispatched and CONVERGED (or diverged — report honestly)
+Report score + convergence + honesty hits.`;
 		case "ship":
-			return `${base}SHIP phase. Only proceed if: evidence recorded, score ≥ ${PASS_THRESHOLD}, two reviewers converged, no test-honesty hits, reconciliation diff clean. Commit with a clean conventional message (use the commit skill). Report the commit hash.`;
+			return `${base}SHIP phase. Only proceed if: evidence recorded, score ≥ ${PASS_THRESHOLD}, two reviewers converged, no test-honesty hits, reconciliation diff clean. Commit with a clean conventional message (use the commit skill).
+
+**SHIP_CHECKPOINT (satisfy ALL before committing):**
+- [ ] Score ≥ ${PASS_THRESHOLD} AND reviewers converged
+- [ ] No test-honesty hits
+- [ ] Reconciliation diff clean
+- [ ] Commit message is conventional (feat/fix/docs/refactor/…)
+Report the commit hash.`;
 		default:
 			return base;
 	}
@@ -292,9 +433,17 @@ function phasePrompt(state: LoopState, phase: Phase): string {
 
 // ─── The loop driver ────────────────────────────────────────────────────────
 
-async function runLoop(pi: ExtensionAPI, ctx: ExtensionContext, request: string, opts: { maxIterations: number; crossModel: boolean }): Promise<void> {
+async function runLoop(
+	pi: ExtensionAPI,
+	ctx: ExtensionContext,
+	request: string,
+	opts: { maxIterations: number; crossModel: boolean },
+): Promise<void> {
 	if (active) {
-		ctx.ui.notify("A loop is already active. Use /loop-status or finish it first.", "warning");
+		ctx.ui.notify(
+			"A loop is already active. Use /loop-status or finish it first.",
+			"warning",
+		);
 		return;
 	}
 
@@ -321,7 +470,10 @@ async function runLoop(pi: ExtensionAPI, ctx: ExtensionContext, request: string,
 	persist(state);
 	logEvent(state, "workflow_started");
 	recordStatus(ctx);
-	ctx.ui.notify(`Loop started: ${type} (cap ${opts.maxIterations}${opts.crossModel ? ", cross-model" : ""})`, "info");
+	ctx.ui.notify(
+		`Loop started: ${type} (cap ${opts.maxIterations}${opts.crossModel ? ", cross-model" : ""})`,
+		"info",
+	);
 
 	// Phase 0: pre-flight contract (principle 7).
 	await steer(ctx, contractPrompt(request, type));
@@ -337,12 +489,15 @@ function lastAssistantText(ctx: ExtensionContext): string {
 	for (let i = entries.length - 1; i >= 0; i--) {
 		const e = entries[i];
 		if (e.type === "message") {
-			const msg = (e as { message?: { role?: string; content?: unknown } }).message;
+			const msg = (e as { message?: { role?: string; content?: unknown } })
+				.message;
 			if (msg?.role === "assistant") {
 				const c = msg.content;
 				if (typeof c === "string") return c;
 				if (Array.isArray(c)) {
-					return c.map((b: any) => (b?.type === "text" ? String(b.text ?? "") : "")).join("\n");
+					return c
+						.map((b: any) => (b?.type === "text" ? String(b.text ?? "") : ""))
+						.join("\n");
 				}
 			}
 		}
@@ -377,7 +532,10 @@ function setupHooks(pi: ExtensionAPI): void {
 			if (!intent) {
 				// Agent hasn't produced the contract yet; steer again (bounded).
 				if (active.iteration >= 2) {
-					ctx.ui.notify("Loop: contract not produced after 2 attempts — REJECTING.", "error");
+					ctx.ui.notify(
+						"Loop: contract not produced after 2 attempts — REJECTING.",
+						"error",
+					);
 					active.phase = "rejected";
 					logEvent(active, "rejected_no_contract");
 					persist(active);
@@ -387,7 +545,10 @@ function setupHooks(pi: ExtensionAPI): void {
 				}
 				active.iteration++;
 				persist(active);
-				await steer(ctx, `${contractPrompt(active.userRequest, active.workflowType)}\n\nThe previous response did not contain a fenced JSON contract. Output ONLY the contract JSON block.`);
+				await steer(
+					ctx,
+					`${contractPrompt(active.userRequest, active.workflowType)}\n\nThe previous response did not contain a fenced JSON contract. Output ONLY the contract JSON block.`,
+				);
 				return;
 			}
 			const rejection = preFlightCheck(intent);
@@ -420,7 +581,8 @@ function setupHooks(pi: ExtensionAPI): void {
 		const phase = active.phase;
 		const signals: Record<string, RegExp> = {
 			plan: /\bplan (written|done|reviewed|complete)\b|\.loop-plan\.md/i,
-			build: /\bbuild (done|complete)\b|tests? (pass|green|fail|red)\b|\bRED\b|\bGREEN\b/i,
+			build:
+				/\bbuild (done|complete)\b|tests? (pass|green|fail|red)\b|\bRED\b|\bGREEN\b/i,
 			review: /\breview (done|complete)\b|findings?:|severity:/i,
 			verify: /\bscore:?\s*(\d+(?:\.\d+)?)/i,
 			ship: /\bcommit\b|commit hash:|[0-9a-f]{7,40}/i,
@@ -433,7 +595,11 @@ function setupHooks(pi: ExtensionAPI): void {
 			if (score !== null) active.scoreHistory.push(score);
 			const honestyHits = dishonestyHits(text);
 			const converged = /converg/i.test(text) && !/diverg/i.test(text);
-			const passed = score !== null && score >= PASS_THRESHOLD && converged && honestyHits.length === 0;
+			const passed =
+				score !== null &&
+				score >= PASS_THRESHOLD &&
+				converged &&
+				honestyHits.length === 0;
 
 			if (passed) {
 				logEvent(active, `verify_pass score=${score}`);
@@ -447,11 +613,20 @@ function setupHooks(pi: ExtensionAPI): void {
 
 			// Not passed — remediation loop-back.
 			active.iteration++;
-			active.remediationHistory.push({ iteration: active.iteration, reason: honestyHits.length ? `test-honesty hits: ${honestyHits.join(", ")}` : `score ${score} < ${PASS_THRESHOLD} or no convergence`, ts: new Date().toISOString() });
+			active.remediationHistory.push({
+				iteration: active.iteration,
+				reason: honestyHits.length
+					? `test-honesty hits: ${honestyHits.join(", ")}`
+					: `score ${score} < ${PASS_THRESHOLD} or no convergence`,
+				ts: new Date().toISOString(),
+			});
 			logEvent(active, `verify_fail iter=${active.iteration}`);
 
 			if (active.iteration >= active.maxIterations) {
-				ctx.ui.notify(`Loop: CAP reached (${active.maxIterations} iterations). Halting — surface to human.`, "warning");
+				ctx.ui.notify(
+					`Loop: CAP reached (${active.maxIterations} iterations). Halting — surface to human.`,
+					"warning",
+				);
 				logEvent(active, "cap_reached");
 				active.phase = "done";
 				persist(active);
@@ -460,7 +635,10 @@ function setupHooks(pi: ExtensionAPI): void {
 				return;
 			}
 			if (isPlateau(active.scoreHistory)) {
-				ctx.ui.notify("Loop: PLATEAU detected (no improvement in last 2 iterations). Halting — surface to human.", "warning");
+				ctx.ui.notify(
+					"Loop: PLATEAU detected (no improvement in last 2 iterations). Halting — surface to human.",
+					"warning",
+				);
 				logEvent(active, "plateau_detected");
 				active.phase = "done";
 				persist(active);
@@ -474,7 +652,10 @@ function setupHooks(pi: ExtensionAPI): void {
 			applyPhaseTools(pi, "build");
 			persist(active);
 			recordStatus(ctx);
-			await steer(ctx, `${phasePrompt(active, "build")}\n\nRemediation iteration ${active.iteration}: fix the verify failures (score ${score}, honesty hits: ${honestyHits.join(", ") || "none"}, convergence: ${converged ? "yes" : "no"}).`);
+			await steer(
+				ctx,
+				`${phasePrompt(active, "build")}\n\nRemediation iteration ${active.iteration}: fix the verify failures (score ${score}, honesty hits: ${honestyHits.join(", ") || "none"}, convergence: ${converged ? "yes" : "no"}).`,
+			);
 			return;
 		}
 
@@ -491,20 +672,32 @@ function setupHooks(pi: ExtensionAPI): void {
 
 		// REVIEW: findings → remediation to BUILD; clean → VERIFY.
 		if (phase === "review") {
-			const hasFindings = /\b(CRITICAL|HIGH)\b/i.test(text) && !/no (critical|high|findings)/i.test(text);
+			const hasFindings =
+				/\b(CRITICAL|HIGH)\b/i.test(text) &&
+				!/no (critical|high|findings)/i.test(text);
 			if (hasFindings && active.iteration < active.maxIterations) {
 				active.iteration++;
-				active.remediationHistory.push({ iteration: active.iteration, reason: "review findings (CRITICAL/HIGH)", ts: new Date().toISOString() });
+				active.remediationHistory.push({
+					iteration: active.iteration,
+					reason: "review findings (CRITICAL/HIGH)",
+					ts: new Date().toISOString(),
+				});
 				logEvent(active, `review_findings iter=${active.iteration}`);
 				active.phase = "build";
 				applyPhaseTools(pi, "build");
 				persist(active);
 				recordStatus(ctx);
-				await steer(ctx, `${phasePrompt(active, "build")}\n\nRemediation iteration ${active.iteration}: address the CRITICAL/HIGH review findings.`);
+				await steer(
+					ctx,
+					`${phasePrompt(active, "build")}\n\nRemediation iteration ${active.iteration}: address the CRITICAL/HIGH review findings.`,
+				);
 				return;
 			}
 			if (hasFindings && active.iteration >= active.maxIterations) {
-				ctx.ui.notify(`Loop: CAP reached on review findings (${active.maxIterations}). Halting.`, "warning");
+				ctx.ui.notify(
+					`Loop: CAP reached on review findings (${active.maxIterations}). Halting.`,
+					"warning",
+				);
 				logEvent(active, "cap_reached_review");
 				active.phase = "done";
 				persist(active);
@@ -556,7 +749,11 @@ function setupHooks(pi: ExtensionAPI): void {
 
 // ─── Commands ───────────────────────────────────────────────────────────────
 
-function parseArgs(args: string): { maxIterations: number; crossModel: boolean; request: string } {
+function parseArgs(args: string): {
+	maxIterations: number;
+	crossModel: boolean;
+	request: string;
+} {
 	let maxIterations = DEFAULT_MAX_ITERATIONS;
 	let crossModel = false;
 	const tokens = args.split(/\s+/);
@@ -580,26 +777,39 @@ function showStatus(pi: ExtensionAPI, ctx: ExtensionContext): void {
 		// Show the most recent workflow from disk.
 		try {
 			ensureWorkflowsDir();
-			const files = readdirSync(WORKFLOWS_DIR).filter((f: string) => f.endsWith(".json"));
+			const files = readdirSync(WORKFLOWS_DIR).filter((f: string) =>
+				f.endsWith(".json"),
+			);
 			if (files.length === 0) {
 				ctx.ui.notify("No loop workflows found.", "info");
 				return;
 			}
 			const latest = files.sort().pop()!;
-			const state = JSON.parse(readFileSync(join(WORKFLOWS_DIR, latest), "utf-8")) as LoopState;
-			ctx.ui.notify(`Last loop: ${state.workflowType} — ${state.phase}, iter ${state.iteration}/${state.maxIterations}, scores [${state.scoreHistory.join(", ")}]`, "info");
+			const state = JSON.parse(
+				readFileSync(join(WORKFLOWS_DIR, latest), "utf-8"),
+			) as LoopState;
+			ctx.ui.notify(
+				`Last loop: ${state.workflowType} — ${state.phase}, iter ${state.iteration}/${state.maxIterations}, scores [${state.scoreHistory.join(", ")}]`,
+				"info",
+			);
 		} catch {
 			ctx.ui.notify("No loop workflows found.", "info");
 		}
 		return;
 	}
-	const scoreLine = active.scoreHistory.length ? `scores [${active.scoreHistory.join(", ")}]` : "no scores yet";
-	ctx.ui.notify(`Loop: ${active.workflowType} — phase ${active.phase}, iter ${active.iteration}/${active.maxIterations}, ${scoreLine}`, "info");
+	const scoreLine = active.scoreHistory.length
+		? `scores [${active.scoreHistory.join(", ")}]`
+		: "no scores yet";
+	ctx.ui.notify(
+		`Loop: ${active.workflowType} — phase ${active.phase}, iter ${active.iteration}/${active.maxIterations}, ${scoreLine}`,
+		"info",
+	);
 }
 
 export default function loopEngineExtension(pi: ExtensionAPI): void {
 	pi.registerCommand("loop", {
-		description: "Start a bounded autonomous loop (pre-flight contract → plan → build → review → verify → ship). Flags: --max-iterations N, --cross-model",
+		description:
+			"Start a bounded autonomous loop (pre-flight contract → plan → build → review → verify → ship). Flags: --max-iterations N, --cross-model",
 		handler: async (args, ctx) => {
 			if (ctx.mode !== "tui") {
 				ctx.ui.notify("loop requires interactive mode", "error");
@@ -607,7 +817,10 @@ export default function loopEngineExtension(pi: ExtensionAPI): void {
 			}
 			const parsed = parseArgs(args ?? "");
 			if (!parsed.request) {
-				ctx.ui.notify("Usage: /loop \"<task>\" [--max-iterations N] [--cross-model]", "warning");
+				ctx.ui.notify(
+					'Usage: /loop "<task>" [--max-iterations N] [--cross-model]',
+					"warning",
+				);
 				return;
 			}
 			await runLoop(pi, ctx, parsed.request, parsed);
@@ -642,7 +855,7 @@ export default function loopEngineExtension(pi: ExtensionAPI): void {
 	pi.registerShortcut(Key.ctrlShift("l"), {
 		description: "Start a loop (opens palette-free; type the task after)",
 		handler: async (ctx) => {
-			ctx.ui.setEditorText("/loop \"\" --max-iterations 3");
+			ctx.ui.setEditorText('/loop "" --max-iterations 3');
 		},
 	});
 

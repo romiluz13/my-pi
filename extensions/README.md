@@ -63,6 +63,16 @@ reconciliation over assertion. **Three exits: PASS / CAP / WEDGE.**
 - **7 design principles:** five-mode pre-flight, plateau-aware, GAN-shaped (3
   exits), convergence (santa), liveness (wedge detection), reconciliation over
   assertion, thought-it-through gate (pre-loop contract).
+- **5 prompt techniques stolen from Archon** (all steering-text — zero new moving
+  parts): (1) 5 specialized parallel reviewers + synthesis (code-review /
+  error-handling / test-coverage / comment-quality / docs-impact) instead of
+  generic "2-3 reviewers"; (2) per-phase CHECKPOINT gates (visible evidence
+  before signaling completion); (3) "Patterns to Mirror" with actual file:line
+  code snippets extracted in PLAN, referenced as MIRROR on each BUILD task; (4)
+  honor the contract's `nonGoals` in review (anti-scope-creep — don't flag
+  intentional exclusions); (5) per-task validation in BUILD (type-check after
+  every file change — "never accumulate broken state"). See
+  `docs/archon-learnings.md`.
 - **Design doc:** `docs/loop-engine-design.md` (or `/tmp/pi-loop/DESIGN.md` in
   dev). Full rationale + cc10x comparison in `docs/audits/`.
 
