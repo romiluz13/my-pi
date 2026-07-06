@@ -1,6 +1,6 @@
 # my-pi
 
-**The best Pi coding agent setup — 12 packages, 54 skills, 8 slash commands, 3 custom extensions (incl. loop engine), 10-step autonomous workflow. Zero bloat, pure Pi ideology.**
+**The best Pi coding agent setup — 12 packages, 54 skills, 8 slash commands, 4 custom extensions (incl. loop engine + guardrails), 10-step autonomous workflow. Zero bloat, pure Pi ideology.**
 
 [![Pi](https://img.shields.io/badge/Pi-v0.80+-blue.svg)](https://pi.dev)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
@@ -105,14 +105,16 @@ Together they solve the #1 agent problem: losing context across sessions AND acr
 
 ---
 
-## 3 Custom Extensions
+## 4 Custom Extensions
 
 User-local TypeScript glue in `extensions/` — the Pi way: primitives, not features. Each reads from an existing store and owns no axis that a package already owns. Hot-reloadable with `/reload`. Full harmony contract in [`extensions/README.md`](extensions/README.md).
 
 | Extension | Trigger | What it does |
 | --------- | -------- | ------------ |
 | `palette.ts` | `Ctrl+Shift+P` / `/palette` | Fuzzy command palette over **every** slash command (prompts + skills + extension commands). Discovers dynamically via `pi.getCommands()` — zero drift. Inserts `/<cmd>` into the editor for native dispatch. |
+| `handoff.ts` | `/handoff [next task]` | Generates a self-contained `HANDOFF.md` from the session ledger and drafts a continuation prompt. **Deterministic — no LLM call**, so it never competes with the memory layers' background work. |
 | `loop.ts` | `/loop "<task>"` / `Ctrl+Shift+L` | **Bounded loop engine** — pre-flight contract gate → plan → build → review → verify → ship, with remediation loop-back (cap 3), plateau detection, independent verifier convergence (santa, cross-model opt-in), test-honesty gates, reconciliation over assertion. Three exits: PASS / CAP / WEDGE. Owns one new axis (durable workflow state + gates), composes on all 12 packages via steering, registers zero tools. |
+| `guardrails.ts` | automatic (every turn) | Re-injects a HARD RULES block from AGENTS.md into the system prompt every turn via `before_agent_start`. Defeats the "I didn't pay attention to AGENTS.md" failure + survives compaction. `/guardrails on\|off\|test`. Prominence tier (research: ~90-95% reliable); upgrade path to `tool_call` gates documented. |
 
 **Harmony audit** (3 fresh-context reviewers): 0 critical/major conflicts across all 12 packages + 2 extensions. Full reports in [`docs/audits/`](docs/audits/).
 

@@ -66,6 +66,28 @@ reconciliation over assertion. **Three exits: PASS / CAP / WEDGE.**
 - **Design doc:** `docs/loop-engine-design.md` (or `/tmp/pi-loop/DESIGN.md` in
   dev). Full rationale + cc10x comparison in `docs/audits/`.
 
+### `guardrails.ts` — AGENTS.md prominence re-injection
+
+Solves the known failure: "the agent says it didn't pay attention to AGENTS.md."
+Every turn, `before_agent_start` re-appends a HARD RULES block — pulled from
+the AGENTS.md that Pi already loaded into `systemPromptOptions.contextFiles` —
+to the top-attention region of the system prompt. Defeats mid-session forgetting
+and survives compaction by construction (Pi re-runs `before_agent_start` on the
+retried turn). Plus `session_compact` audit + `/guardrails on|off|test`.
+
+- **Trigger:** automatic (loads on session_start, runs every before_agent_start).
+- **Harmony contract:** owns NO axis, registers NO tools, hooks NO tool_call.
+  `before_agent_start` is append-only (composes with hermes + ptm + rewind).
+  `session_compact` is read-only (composes with hermes flush + observational
+  compaction summary).
+- **Honest scope:** this is the PROMINENCE tier (~90-95% reliable per IFScale
+  research), NOT the ENFORCEMENT tier. For safety-critical rules that must
+  never fail, add `on('tool_call') {block:true}` gates later — see the upgrade
+  path in `docs/guardrails-research.md`. This extension makes rules hard to
+  ignore; it cannot physically prevent violation.
+- **Research basis:** arXiv 2507.11538 (IFScale — density decay, primacy),
+  claude-code#7777 (model admits rules are advisory), community consensus.
+
 ## Harmony guardrails (for any future extension added here)
 
 1. **One moving part per axis.** Each capability axis already has an owner

@@ -30,7 +30,7 @@ SKIP_CLI=false
 [[ "${1:-}" == "--skip-cli" ]] && SKIP_CLI=true
 
 echo -e "${BOLD}my-pi installer${RESET}"
-echo -e "The best Pi coding agent setup — 12 packages, 60 skills, 3 custom extensions (incl. loop engine), autonomous workflow.\n"
+echo -e "The best Pi coding agent setup — 12 packages, 60 skills, 4 custom extensions (incl. loop engine + guardrails), autonomous workflow.\n"
 
 # ── Prerequisites ──────────────────────────────────────────────────────────
 
