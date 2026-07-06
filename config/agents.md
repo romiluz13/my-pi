@@ -14,7 +14,7 @@ Single source of truth for every AI coding tool on this machine (Pi, Claude Code
 
 ## Autonomous workflow
 
-When given a task, follow this flow automatically. The workflow IS the skill router — each step names the exact skill. Don't spawn a router subagent.
+When given a task, follow this flow automatically. The workflow IS the skill router — each step names the exact skill. Don't spawn a router subagent. For hard/multi-phase tasks, use `/loop` (the loop engine extension) — it is a router FUNCTION built the Pi way (an extension that steers + gates, NOT a subagent), providing bounded iteration, phase gates, and independent verifier convergence that the linear pipeline alone can't enforce.
 
 1. **Understand (ORIENT).** If the user wants to understand (not change), explain inline. Do NOT fall through to build. No write agents, no workflow. If the user wants to change something: read repo AGENTS.md, relevant files, existing patterns. Search memory. Fan out subagents for parallel research (web, GitHub, codebase — each reads a different source). If ambiguous, ask ONE clarifying question. If clear, proceed.
 2. **Brainstorm (new features).** Before building anything new → `brainstorming` skill: explore context, ask questions one at a time, propose approaches, present design, get user approval.

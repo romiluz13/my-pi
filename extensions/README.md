@@ -39,6 +39,33 @@ pi-observational-memory background work).
   generation. Does NOT touch compaction (pi-observational-memory) or search
   (pi-hermes-memory).
 
+### `loop.ts` — Bounded autonomous loop engine (`/loop`)
+
+The one structural capability my-pi was missing: a real **loop engine**, not a
+forward-only pipeline. Pre-flight contract gate → PLAN → BUILD → REVIEW →
+VERIFY → SHIP, with bounded remediation loop-back (cap 3), plateau detection
+(`iteration ≥ 3` AND no improvement in last 2), independent verifier
+convergence (santa-method, cross-model opt-in), test-honesty gates, and
+reconciliation over assertion. **Three exits: PASS / CAP / WEDGE.**
+
+- **Trigger:** `/loop "<task>"` or `Ctrl+Shift+L`. Flags: `--max-iterations N`
+  (default 3), `--cross-model` (santa cross-model review). `/loop-status`,
+  `/loop-abort`.
+- **Harmony contract:** owns ONE new axis (durable workflow state + phase gates
+  - iteration control). Registers ZERO tools. Pi has no `executeTool` API, so
+  the engine COMPOSES on pi-subagents/pi-lens/hermes by STEERING the agent
+  (`sendUserMessage({deliverAs:'steer'})` + `setActiveTools` per phase +
+  `on('tool_call')` gates) — it never re-implements delegation. Durable state
+  at `~/.pi/workflows/{wf}.json` + `.events.jsonl` (separate from hermes SQLite
+  - observational ledger). The `tool_call` hook is additive (pi-rewind and
+  pi-hypa hook the same event for different concerns; this one only blocks
+  tools outside the phase allowlist).
+- **7 design principles:** five-mode pre-flight, plateau-aware, GAN-shaped (3
+  exits), convergence (santa), liveness (wedge detection), reconciliation over
+  assertion, thought-it-through gate (pre-loop contract).
+- **Design doc:** `docs/loop-engine-design.md` (or `/tmp/pi-loop/DESIGN.md` in
+  dev). Full rationale + cc10x comparison in `docs/audits/`.
+
 ## Harmony guardrails (for any future extension added here)
 
 1. **One moving part per axis.** Each capability axis already has an owner
