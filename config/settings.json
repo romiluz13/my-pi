@@ -6,9 +6,11 @@
     "--",
     "npm"
   ],
-  "lastChangelogVersion": "0.80.3",
-  "defaultProvider": "grove-openai",
-  "defaultModel": "FW-GLM-5.2",
+  "defaultThinkingLevel": "high",
+  "compaction": {
+    "reserveTokens": 32768,
+    "keepRecentTokens": 12288
+  },
   "retry": {
     "enabled": true,
     "maxRetries": 10,
@@ -22,11 +24,6 @@
     "compactAfterTokensRatio": 0.4,
     "observationsPoolMaxTokens": 20000,
     "agentMaxTurns": 16,
-    "model": {
-      "provider": "grove-openai",
-      "id": "gpt-4.1-nano",
-      "thinking": "off"
-    },
     "passive": false,
     "debugLog": false
   },
@@ -44,40 +41,5 @@
     "npm:pi-rewind",
     "npm:pi-subagents",
     "npm:pi-web-access"
-  ],
-  "defaultThinkingLevel": "xhigh",
-  "subagents": {
-    "agentOverrides": {
-      "worker": {
-        "thinking": "xhigh"
-      },
-      "planner": {
-        "thinking": "xhigh"
-      },
-      "oracle": {
-        "thinking": "xhigh"
-      },
-      "reviewer": {
-        "thinking": "xhigh"
-      },
-      "researcher": {
-        "thinking": "xhigh"
-      },
-      "context-builder": {
-        "thinking": "xhigh"
-      },
-      "scout": {
-        "thinking": "xhigh"
-      },
-      "delegate": {
-        "thinking": "xhigh"
-      }
-    }
-  },
-  "compaction": {
-    "enabled": true,
-    "reserveTokens": 629146,
-    "keepRecentTokens": 50000
-  },
-  "defaultProjectTrust": "always"
+  ]
 }

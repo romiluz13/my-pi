@@ -30,7 +30,7 @@ SKIP_CLI=false
 [[ "${1:-}" == "--skip-cli" ]] && SKIP_CLI=true
 
 echo -e "${BOLD}my-pi installer${RESET}"
-echo -e "The best Pi coding agent setup — 10 packages, 59 skills, autonomous workflow.\n"
+echo -e "The best Pi coding agent setup — 12 packages, 60 skills, autonomous workflow.\n"
 
 # ── Prerequisites ──────────────────────────────────────────────────────────
 
@@ -52,12 +52,14 @@ mkdir -p "$PI_AGENT_DIR"
 # Merge our settings into existing Pi settings (preserve provider/model)
 if [ -f "$PI_AGENT_DIR/settings.json" ]; then
 	cp "$PI_AGENT_DIR/settings.json" "$PI_AGENT_DIR/settings.json.bak.$(date +%s)"
-	# Keep existing provider/model, add our packages + thinking + compaction
+	# Keep existing provider/model, add our packages + thinking + compaction + retry + memory
 	existing=$(cat "$PI_AGENT_DIR/settings.json")
 	ours=$(cat "$SCRIPT_DIR/config/settings.json")
 	echo "$existing" | jq --argjson ours "$ours" '. + {
     "defaultThinkingLevel": $ours.defaultThinkingLevel,
     "compaction": $ours.compaction,
+    "retry": $ours.retry,
+    "observational-memory": $ours["observational-memory"],
     "theme": $ours.theme,
     "packages": $ours.packages
   }' >/tmp/pi-settings-merged.json
@@ -70,10 +72,11 @@ info "Pi settings configured"
 
 # ── Packages ───────────────────────────────────────────────────────────────
 
-step "Installing 10 Pi packages"
+step "Installing 12 Pi packages"
 
 PACKAGES=(
 	pi-hermes-memory
+	pi-observational-memory
 	pi-subagents
 	pi-lens
 	@hypabolic/pi-hypa
@@ -83,6 +86,7 @@ PACKAGES=(
 	pi-btw
 	@juicesharp/rpiv-ask-user-question
 	pi-rewind
+	pi-web-access
 )
 
 for pkg in "${PACKAGES[@]}"; do
