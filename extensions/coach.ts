@@ -37,7 +37,15 @@ let enabled = true;
 
 // ─── Intent classification ──────────────────────────────────────────────────
 
-type Intent = "trivial" | "build" | "debug" | "plan" | "research" | "review" | "ship" | "explore";
+type Intent =
+	| "trivial"
+	| "build"
+	| "debug"
+	| "plan"
+	| "research"
+	| "review"
+	| "ship"
+	| "explore";
 
 interface Classification {
 	intent: Intent;
@@ -49,31 +57,71 @@ function classify(text: string): Classification {
 	const words = t.split(/\s+/);
 
 	// Trivial: very short, or clearly a question, or a single obvious action.
-	if (words.length <= 3 && !/build|fix|debug|add|implement|refactor|test|deploy/i.test(t)) {
+	if (
+		words.length <= 3 &&
+		!/build|fix|debug|add|implement|refactor|test|deploy/i.test(t)
+	) {
 		return { intent: "trivial", reason: "Short task — just do it directly." };
 	}
-	if (/^(what|why|how|explain|show|list|tell|describe|summarize|difference between)\b/.test(t) && !/and then|then (build|fix|add|implement)/.test(t)) {
-		return { intent: "explore", reason: "This is a question / exploration — answer inline, no workflow." };
+	if (
+		/^(what|why|how|explain|show|list|tell|describe|summarize|difference between)\b/.test(
+			t,
+		) &&
+		!/and then|then (build|fix|add|implement)/.test(t)
+	) {
+		return {
+			intent: "explore",
+			reason: "This is a question / exploration — answer inline, no workflow.",
+		};
 	}
 
 	// Research: explicit research / investigate / compare / find evidence.
-	if (/\b(research|investigate|compare|find (evidence|sources)|what (do|does) people|community|benchmark|prior art|is there (a|an) (lib|package|tool))\b/.test(t)) {
-		return { intent: "research", reason: "Needs evidence from multiple sources — /research fans out." };
+	if (
+		/\b(research|investigate|compare|find (evidence|sources)|what (do|does) people|community|benchmark|prior art|is there (a|an) (lib|package|tool))\b/.test(
+			t,
+		)
+	) {
+		return {
+			intent: "research",
+			reason: "Needs evidence from multiple sources — /research fans out.",
+		};
 	}
 
 	// Debug: bug / broken / failing / error / crash / regression.
-	if (/\b(debug|bug|broken|failing|fail|error|crash|regression|diagnos|why is .* not|doesn't work|throws|exception|stacktrace)\b/.test(t)) {
-		return { intent: "debug", reason: "Bug — /loop builds a feedback loop, finds root cause, fixes (bounded)." };
+	if (
+		/\b(debug|bug|broken|failing|fail|error|crash|regression|diagnos|why is .* not|doesn't work|throws|exception|stacktrace)\b/.test(
+			t,
+		)
+	) {
+		return {
+			intent: "debug",
+			reason:
+				"Bug — /loop builds a feedback loop, finds root cause, fixes (bounded).",
+		};
 	}
 
 	// Plan / design / architect / spec.
-	if (/\b(plan|design|architect|spec|rfc|brainstorm|how should (we|i) (build|structure)|redesign|restructure|refactor (the|this))\b/.test(t)) {
-		return { intent: "plan", reason: "Design question — /loop runs the plan phase (read-only) first." };
+	if (
+		/\b(plan|design|architect|spec|rfc|brainstorm|how should (we|i) (build|structure)|redesign|restructure|refactor (the|this))\b/.test(
+			t,
+		)
+	) {
+		return {
+			intent: "plan",
+			reason: "Design question — /loop runs the plan phase (read-only) first.",
+		};
 	}
 
 	// Review / audit.
-	if (/\b(review|audit|roast|critique|check (my|this) (code|diff|pr)|find (issues|problems|antipatterns))\b/.test(t)) {
-		return { intent: "review", reason: "Review task — /review fans out parallel reviewers." };
+	if (
+		/\b(review|audit|roast|critique|check (my|this) (code|diff|pr)|find (issues|problems|antipatterns))\b/.test(
+			t,
+		)
+	) {
+		return {
+			intent: "review",
+			reason: "Review task — /review fans out parallel reviewers.",
+		};
 	}
 
 	// Ship / commit / pr.
@@ -82,8 +130,17 @@ function classify(text: string): Classification {
 	}
 
 	// Build: anything that changes code (add, implement, update, create, fix a feature).
-	if (/\b(build|add|implement|create|update|make|generate|set up|setup|integrate|migrate|support|enable|wire up|write|refactor)\b/.test(t) || words.length > 6) {
-		return { intent: "build", reason: "Build task — /loop runs plan→build→review→verify→ship (bounded)." };
+	if (
+		/\b(build|add|implement|create|update|make|generate|set up|setup|integrate|migrate|support|enable|wire up|write|refactor)\b/.test(
+			t,
+		) ||
+		words.length > 6
+	) {
+		return {
+			intent: "build",
+			reason:
+				"Build task — /loop runs plan→build→review→verify→ship (bounded).",
+		};
 	}
 
 	return { intent: "trivial", reason: "Looks quick — just do it directly." };
@@ -98,12 +155,38 @@ interface Suggestion {
 }
 
 function suggestionsFor(c: Classification): Suggestion[] {
-	const loop: Suggestion = { label: "Run /loop (bounded workflow)", command: "/loop \"$TASK\"", description: "plan → build → review → verify → ship, with gates + convergence. For hard/multi-phase tasks." };
-	const research: Suggestion = { label: "Run /research (fan out)", command: "/research \"$TASK\"", description: "Parallel research across web + GitHub + codebase. For evidence-gathering." };
-	const review: Suggestion = { label: "Run /review (parallel reviewers)", command: "/review", description: "Fan out 2-3 reviewers on the current diff. Anti-anchored." };
-	const ship: Suggestion = { label: "Run /ship (verify + commit)", command: "/ship", description: "Verify with evidence, then commit. Use when code is ready." };
-	const justDoIt: Suggestion = { label: "Just do it (no workflow)", command: null, description: "Quick fix — agent handles it directly, no loop/gates." };
-	const explore: Suggestion = { label: "Answer inline (explore)", command: null, description: "No changes — agent explains / explores. (workflow step 1)" };
+	const loop: Suggestion = {
+		label: "Run /loop (bounded workflow)",
+		command: '/loop "$TASK"',
+		description:
+			"plan → build → review → verify → ship, with gates + convergence. For hard/multi-phase tasks.",
+	};
+	const research: Suggestion = {
+		label: "Run /research (fan out)",
+		command: '/research "$TASK"',
+		description:
+			"Parallel research across web + GitHub + codebase. For evidence-gathering.",
+	};
+	const review: Suggestion = {
+		label: "Run /review (parallel reviewers)",
+		command: "/review",
+		description: "Fan out 2-3 reviewers on the current diff. Anti-anchored.",
+	};
+	const ship: Suggestion = {
+		label: "Run /ship (verify + commit)",
+		command: "/ship",
+		description: "Verify with evidence, then commit. Use when code is ready.",
+	};
+	const justDoIt: Suggestion = {
+		label: "Just do it (no workflow)",
+		command: null,
+		description: "Quick fix — agent handles it directly, no loop/gates.",
+	};
+	const explore: Suggestion = {
+		label: "Answer inline (explore)",
+		command: null,
+		description: "No changes — agent explains / explores. (workflow step 1)",
+	};
 
 	switch (c.intent) {
 		case "trivial":
@@ -113,11 +196,31 @@ function suggestionsFor(c: Classification): Suggestion[] {
 		case "build":
 			return [loop, justDoIt, research];
 		case "debug":
-			return [{ ...loop, label: "Run /loop (debug: feedback loop → root cause → fix)", description: "debug intent — bounded loop, finds root cause not symptom." }, justDoIt, research];
+			return [
+				{
+					...loop,
+					label: "Run /loop (debug: feedback loop → root cause → fix)",
+					description:
+						"debug intent — bounded loop, finds root cause not symptom.",
+				},
+				justDoIt,
+				research,
+			];
 		case "plan":
-			return [{ ...loop, label: "Run /loop (plan phase first, read-only)", description: "plan intent — explores read-only, then decides." }, { ...research, label: "Or /research first" }, justDoIt];
+			return [
+				{
+					...loop,
+					label: "Run /loop (plan phase first, read-only)",
+					description: "plan intent — explores read-only, then decides.",
+				},
+				{ ...research, label: "Or /research first" },
+				justDoIt,
+			];
 		case "research":
-			return [research, { ...loop, label: "Or /loop (if it becomes a build task)" }];
+			return [
+				research,
+				{ ...loop, label: "Or /loop (if it becomes a build task)" },
+			];
 		case "review":
 			return [review, { ...loop, label: "Or /loop (full build+review)" }];
 		case "ship":
@@ -182,7 +285,8 @@ export default function coachExtension(pi: ExtensionAPI): void {
 
 	// /coach command — toggle + status + test the classifier on a sample.
 	pi.registerCommand("coach", {
-		description: "Toggle or test the auto-coach (suggests the right workflow for your task)",
+		description:
+			"Toggle or test the auto-coach (suggests the right workflow for your task)",
 		handler: async (args, ctx) => {
 			const sub = (args ?? "").trim().toLowerCase();
 			if (sub === "off") {
@@ -194,14 +298,20 @@ export default function coachExtension(pi: ExtensionAPI): void {
 			if (sub === "on") {
 				enabled = true;
 				ctx.ui.setStatus("coach", ctx.ui.theme.fg("dim", "🧭 coach"));
-				ctx.ui.notify("Coach ON — type a task and I'll suggest the workflow.", "info");
+				ctx.ui.notify(
+					"Coach ON — type a task and I'll suggest the workflow.",
+					"info",
+				);
 				return;
 			}
-			if (sub === "test") {
+			if (sub === "test" || sub.startsWith("test ")) {
 				// Classify a sample without transforming.
 				const sample = (args ?? "").replace(/^test\s*/i, "").trim();
 				if (!sample) {
-					ctx.ui.notify("Usage: /coach test <your task> — shows what Coach would suggest", "warning");
+					ctx.ui.notify(
+						"Usage: /coach test <your task> — shows what Coach would suggest",
+						"warning",
+					);
 					return;
 				}
 				const c = classify(sample);
@@ -223,7 +333,10 @@ export default function coachExtension(pi: ExtensionAPI): void {
 		if (enabled) {
 			ctx.ui.setStatus("coach", ctx.ui.theme.fg("dim", "🧭 coach"));
 			// One-time gentle reminder of the interface (not every turn — just once).
-			ctx.ui.notify("Coach on — just type your task. (I'll suggest the workflow. '!' = raw)", "info");
+			ctx.ui.notify(
+				"Coach on — just type your task. (I'll suggest the workflow. '!' = raw)",
+				"info",
+			);
 		}
 	});
 }

@@ -79,7 +79,7 @@
   },
   "compaction": {
     "enabled": true,
-    "reserveTokens": 629146,
+    "reserveTokens": 65536,
     "keepRecentTokens": 50000
   },
   "defaultProjectTrust": "always"

@@ -100,7 +100,10 @@ function truncate(content: string, maxChars: number): string {
 	return `${content.slice(0, maxChars)}\n\n[…truncated; full AGENTS.md already in context above…]`;
 }
 
-function rulesBlock(agentsMd: { path: string; content: string } | null, cfg: GuardrailsConfig): string {
+function rulesBlock(
+	agentsMd: { path: string; content: string } | null,
+	cfg: GuardrailsConfig,
+): string {
 	const header =
 		"\n\n## ⚡ HARD RULES — re-injected every turn by guardrails.ts (from AGENTS.md)\n\n" +
 		"These are NOT advisory. You MUST follow them. If you skipped them before, follow them now.\n\n";
@@ -116,12 +119,11 @@ export default function guardrailsExtension(pi: ExtensionAPI): void {
 	const cfg = loadConfig();
 
 	// Re-inject every turn. This is the core mechanism.
-	pi.on("before_agent_start", async (event) => {
+	pi.on("before_agent_start", async (event, ctx) => {
 		if (!cfg.enabled) return;
 		const agentsMd = findAgentsMd(event.systemPromptOptions?.contextFiles);
 		if (!agentsMd && cfg.warnIfMissing) {
-			// Surface the missing-rules case loudly once; still inject the block
-			// so the model at least sees that rules were expected.
+			ctx.ui.notify("guardrails: AGENTS.md not found in contextFiles — no rules to re-inject.", "warning");
 		}
 		// Append (never replace) — preserves Pi's base prompt + hermes + ptm.
 		return {
@@ -151,7 +153,8 @@ export default function guardrailsExtension(pi: ExtensionAPI): void {
 
 	// /guardrails command — toggle / inspect / test
 	pi.registerCommand("guardrails", {
-		description: "Inspect or toggle AGENTS.md re-injection (guardrails extension)",
+		description:
+			"Inspect or toggle AGENTS.md re-injection (guardrails extension)",
 		handler: async (args, ctx) => {
 			const sub = (args ?? "").trim().toLowerCase();
 			if (sub === "off") {

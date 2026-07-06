@@ -49,7 +49,7 @@ import type {
 	ExtensionAPI,
 	ExtensionContext,
 } from "@earendil-works/pi-coding-agent";
-import { Key, matchesKey } from "@earendil-works/pi-tui";
+import { Key } from "@earendil-works/pi-tui";
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 
@@ -59,7 +59,6 @@ const PLATEAU_DETECT_AT = 3;
 const PLATEAU_NO_IMPROVE_WINDOW = 2;
 const PLATEAU_TOLERANCE = 0.3;
 const PASS_THRESHOLD = 7.0;
-const SANTA_MAX_ROUNDS = 3;
 
 type Phase =
 	| "plan"
@@ -231,7 +230,8 @@ function applyPhaseTools(pi: ExtensionAPI, phase: Phase): void {
 // ─── Steering ───────────────────────────────────────────────────────────────
 
 async function steer(ctx: ExtensionContext, message: string): Promise<void> {
-	await ctx.ui.sendUserMessage(message, { deliverAs: "steer" });
+	// sendUserMessage is on ExtensionContext (ctx), NOT ctx.ui.
+	await ctx.sendUserMessage(message, { deliverAs: "steer" });
 }
 
 // ─── Intent detection ───────────────────────────────────────────────────────
@@ -584,8 +584,8 @@ function setupHooks(pi: ExtensionAPI): void {
 			build:
 				/\bbuild (done|complete)\b|tests? (pass|green|fail|red)\b|\bRED\b|\bGREEN\b/i,
 			review: /\breview (done|complete)\b|findings?:|severity:/i,
-			verify: /\bscore:?\s*(\d+(?:\.\d+)?)/i,
-			ship: /\bcommit\b|commit hash:|[0-9a-f]{7,40}/i,
+			verify: /\bscore\b\D{0,10}(\d+(?:\.\d+)?)/i,
+			ship: /\bcommit(ted)?\b|commit hash:?\s*[0-9a-f]{7,40}/i,
 		};
 
 		// VERIFY: extract score + honesty + convergence.
