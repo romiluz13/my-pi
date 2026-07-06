@@ -14,6 +14,22 @@
     "maxRetries": 10,
     "baseDelayMs": 2000
   },
+  "observational-memory": {
+    "observeAfterTokens": 10000,
+    "reflectAfterTokens": 20000,
+    "compactAfterTokens": 81000,
+    "compactAfterTokensMode": "ratio",
+    "compactAfterTokensRatio": 0.4,
+    "observationsPoolMaxTokens": 20000,
+    "agentMaxTurns": 16,
+    "model": {
+      "provider": "grove-openai",
+      "id": "gpt-4.1-nano",
+      "thinking": "off"
+    },
+    "passive": false,
+    "debugLog": false
+  },
   "theme": "dark",
   "packages": [
     "npm:@hypabolic/pi-hypa",
