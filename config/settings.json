@@ -82,5 +82,32 @@
     "reserveTokens": 65536,
     "keepRecentTokens": 50000
   },
-  "defaultProjectTrust": "always"
+  "defaultProjectTrust": "always",
+  "enabledModels": [
+    "claude-*",
+    "gpt-5.4",
+    "gpt-5.4-mini",
+    "grok-*",
+    "kimi-*",
+    "deepseek-*",
+    "FW-GLM-*",
+    "FW-MiniMax-*",
+    "FW-Kimi-*",
+    "FW-DeepSeek-*"
+  ],
+  "externalEditor": "code --wait",
+  "treeFilterMode": "no-tools",
+  "branchSummary": {
+    "skipPrompt": true
+  },
+  "retry": {
+    "enabled": true,
+    "maxRetries": 10,
+    "baseDelayMs": 2000,
+    "provider": {
+      "timeoutMs": 3600000,
+      "maxRetries": 0,
+      "maxRetryDelayMs": 60000
+    }
+  }
 }

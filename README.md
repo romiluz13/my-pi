@@ -1,6 +1,6 @@
 # my-pi
 
-**The best Pi coding agent setup — 15 packages, 54 skills, 8 slash commands, 5 custom extensions (incl. coach + loop engine + guardrails), 10-step autonomous workflow. You never have to remember a command — Coach suggests the right one. Zero bloat, pure Pi ideology.**
+**The best Pi coding agent setup — 15 packages, 54 skills, 8 slash commands, 5 custom extensions (incl. coach + loop engine + guardrails), 10-step autonomous workflow. You never have to remember a command — Coach suggests the right one. Every Pi power leveraged. Zero bloat, pure Pi ideology.**
 
 [![Pi](https://img.shields.io/badge/Pi-v0.80+-blue.svg)](https://pi.dev)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
@@ -292,6 +292,29 @@ From [Pi's blog](https://mariozechner.at/posts/2025-11-30-pi-coding-agent/):
 > Pi keeps the core small and pushes workflow-specific behavior into extensions, skills, prompt templates, and packages. It intentionally does not include built-in MCP, sub-agents, permission popups, plan mode, to-dos, or background bash.
 
 This setup respects that. Every capability is an extension, skill, or CLI — never MCP bloat.
+
+---
+
+## Every Pi Power Leveraged
+
+Beyond the 15 packages + 5 extensions + 54 skills, the setup pulls every zero-risk lever the Pi docs offer (full audit in [`docs/audits/pi-docs-levers.md`](docs/audits/pi-docs-levers.md) + [`docs/audits/pi-extension-api-powers.md`](docs/audits/pi-extension-api-powers.md)):
+
+| Lever | What it does |
+| --------- | ------------ |
+| `PI_CACHE_RETENTION=long` | Extended prompt cache → direct cost/latency cut on long sessions |
+| `enabledModels` (10 patterns) | Ctrl+P one-key model cycling across Claude/GPT/Grok/Kimi/DeepSeek/GLM |
+| `externalEditor: code --wait` | Ctrl+G opens VS Code for long prompts (not nano fallback) |
+| `treeFilterMode: no-tools` | Cleaner `/tree` navigation through tool-heavy sessions |
+| `branchSummary.skipPrompt` | No "Summarize branch?" friction on every `/tree` jump |
+| `retry.provider.timeoutMs` + `maxRetryDelayMs` | Fail fast on hung requests / long provider-requested delays |
+| `pi.appendEntry` in loop.ts | Loop state persists to the session ledger — survives compaction AND restarts |
+| `ctx.fork()` in loop.ts | Each remediation iteration is a rewindable branch point (composes on pi-rewind) |
+| `defaultThinkingLevel: xhigh` | Max reasoning on every turn + all 8 subagent roles |
+| Two-layer memory | pi-hermes-memory (cross-session SQLite FTS5) + pi-observational-memory (within-session, survives compaction) |
+| Context sidecar | @spences10/pi-context stores oversized output (>24KB) in SQLite, retrievable — complements pi-hypa compression |
+| Live observability | @spences10/pi-observability browser dashboard at 127.0.0.1:43190 |
+
+**Nothing wasted, nothing over-built.** Every lever is zero-risk (no new moving parts) and harmony-audited (0 critical/major conflicts across all 15 packages + 5 extensions — audits in `docs/audits/`).
 
 ---
 

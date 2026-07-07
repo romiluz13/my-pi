@@ -647,7 +647,9 @@ function setupHooks(pi: ExtensionAPI): void {
 				return;
 			}
 
-			// Loop back to BUILD.
+			// Loop back to BUILD. Fork the session first so this iteration is a
+			// rewindable branch point (composes on pi-rewind, which owns undo).
+			try { await ctx.fork(); } catch { /* fork best-effort; never block the loop */ }
 			active.phase = "build";
 			applyPhaseTools(pi, "build");
 			persist(active);
@@ -683,6 +685,8 @@ function setupHooks(pi: ExtensionAPI): void {
 					ts: new Date().toISOString(),
 				});
 				logEvent(active, `review_findings iter=${active.iteration}`);
+				// Fork so this retry is a rewindable branch point.
+				try { await ctx.fork(); } catch { /* fork best-effort */ }
 				active.phase = "build";
 				applyPhaseTools(pi, "build");
 				persist(active);
@@ -741,9 +745,20 @@ function setupHooks(pi: ExtensionAPI): void {
 	// full orphaned-tool-call scan would read the events jsonl.)
 	pi.on("session_before_compact", async () => {
 		if (!active) return;
-		// Flush a workflow-state summary into the compaction so the loop survives.
+		// Persist workflow state into the session ledger so the loop survives
+		// compaction AND restarts (docs: appendEntry = "state that survives
+		// restarts"). Belt-and-suspenders with the ~/.pi/workflows/{wf}.json file.
 		// Additive — does not touch observational-memory's compaction hook.
-		return undefined; // no compaction override; state is already on disk
+		pi.appendEntry("loop-state", {
+			workflowUuid: active.workflowUuid,
+			phase: active.phase,
+			iteration: active.iteration,
+			maxIterations: active.maxIterations,
+			crossModel: active.crossModel,
+			scoreHistory: active.scoreHistory,
+			pendingGate: active.pendingGate,
+		});
+		return undefined; // no compaction override; state is on disk + in ledger
 	});
 }
 
