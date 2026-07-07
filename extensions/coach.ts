@@ -35,115 +35,100 @@ import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 
 let enabled = true;
 
-// ─── Intent classification ──────────────────────────────────────────────────
+// ─── Intent classification (cc10x-router style) ─────────────────────────────
+// Routes on the PRIMARY DELIVERABLE, not the first keyword or message length.
+// ORIENT never falls through to BUILD. BUILD has a complexity gradient.
 
 type Intent =
-	| "trivial"
-	| "build"
-	| "debug"
-	| "plan"
-	| "research"
-	| "review"
-	| "ship"
-	| "explore";
+	| "orient" // understand existing code — NO changes, answer inline
+	| "trivial" // short, no action — just do it
+	| "build-trivial" // 1-2 files, single change — just do it (no loop)
+	| "build" // multi-file / cross-module — /loop
+	| "debug" // diagnosis IS the deliverable — /loop (debug)
+	| "plan" // design question — /loop (plan phase first)
+	| "research" // needs evidence — /research
+	| "review" // advisory only — /review
+	| "ship"; // commit/pr — /ship
 
 interface Classification {
 	intent: Intent;
-	reason: string; // one-line human explanation for the suggestion
+	reason: string;
 }
 
 function classify(text: string): Classification {
 	const t = text.toLowerCase().trim();
 	const words = t.split(/\s+/);
+	const changeAhead = /and then|then (build|fix|add|implement|change|update|create)/.test(t);
+	const buildVerb = /\b(build|add|implement|create|update|make|generate|set up|setup|integrate|migrate|support|enable|wire up|write|refactor|fix|redesign|restructure)\b/.test(t);
+	const debugVerb = /\b(debug|bug|broken|failing|fails?\s+to|crash|regression|diagnos|throws|exception|stacktrace|why is .* not working|doesn't work|not working)\b/.test(t);
 
-	// Trivial: very short, or clearly a question, or a single obvious action.
+	// ORIENT — understand existing code, NOT change it. First-class, never falls
+	// through to BUILD (cc10x: "help me understand" must never spawn a write builder).
 	if (
-		words.length <= 3 &&
-		!/build|fix|debug|add|implement|refactor|test|deploy/i.test(t)
+		/\b(help me understand|how (does|do|is) .*(work|structured|implemented|connected)|explain (how|what|the|where)|walk me through|map (this|the)|what does .*(do|mean)|where is .*(defined|implemented|used)|i'm unfamiliar with|zoom out|trace (through|how)|show me how)\b/.test(t)
+		&& !changeAhead
 	) {
-		return { intent: "trivial", reason: "Short task — just do it directly." };
+		return { intent: "orient", reason: "Orientation — understand existing code. No changes, answer inline." };
 	}
-	if (
-		/^(what|why|how|explain|show|list|tell|describe|summarize|difference between)\b/.test(
-			t,
-		) &&
-		!/and then|then (build|fix|add|implement)/.test(t)
+	// Pure questions (no action verb, no "then change") → also orient.
+		if (
+		/^(what|why|how|explain|show|list|tell|describe|summarize|difference between)\b/.test(t)
+		&& !buildVerb
+		&& !debugVerb
+		&& !/\b(deploy|test)\b/.test(t)
+		&& !changeAhead
 	) {
-		return {
-			intent: "explore",
-			reason: "This is a question / exploration — answer inline, no workflow.",
-		};
-	}
-
-	// Research: explicit research / investigate / compare / find evidence.
-	if (
-		/\b(research|investigate|compare|find (evidence|sources)|what (do|does) people|community|benchmark|prior art|is there (a|an) (lib|package|tool))\b/.test(
-			t,
-		)
-	) {
-		return {
-			intent: "research",
-			reason: "Needs evidence from multiple sources — /research fans out.",
-		};
+		return { intent: "orient", reason: "Question / exploration — answer inline, no workflow." };
 	}
 
-	// Debug: bug / broken / failing / error / crash / regression.
-	if (
-		/\b(debug|bug|broken|failing|fail|error|crash|regression|diagnos|why is .* not|doesn't work|throws|exception|stacktrace)\b/.test(
-			t,
-		)
-	) {
-		return {
-			intent: "debug",
-			reason:
-				"Bug — /loop builds a feedback loop, finds root cause, fixes (bounded).",
-		};
-	}
-
-	// Plan / design / architect / spec.
-	if (
-		/\b(plan|design|architect|spec|rfc|brainstorm|how should (we|i) (build|structure)|redesign|restructure|refactor (the|this))\b/.test(
-			t,
-		)
-	) {
-		return {
-			intent: "plan",
-			reason: "Design question — /loop runs the plan phase (read-only) first.",
-		};
-	}
-
-	// Review / audit.
-	if (
-		/\b(review|audit|roast|critique|check (my|this) (code|diff|pr)|find (issues|problems|antipatterns))\b/.test(
-			t,
-		)
-	) {
-		return {
-			intent: "review",
-			reason: "Review task — /review fans out parallel reviewers.",
-		};
-	}
-
-	// Ship / commit / pr.
+	// SHIP — single-word commands, checked before build/review.
 	if (/^(ship|commit|pr|push|release)($|\b)/.test(t)) {
 		return { intent: "ship", reason: "Ship — /ship verifies + commits." };
 	}
 
-	// Build: anything that changes code (add, implement, update, create, fix a feature).
-	if (
-		/\b(build|add|implement|create|update|make|generate|set up|setup|integrate|migrate|support|enable|wire up|write|refactor)\b/.test(
-			t,
-		) ||
-		words.length > 6
-	) {
-		return {
-			intent: "build",
-			reason:
-				"Build task — /loop runs plan→build→review→verify→ship (bounded).",
-		};
+	// REVIEW — advisory only, never creates code (cc10x: REVIEW never spawns code-changing tasks).
+	if (/\b(review|audit|roast|critique|check (my|this) (code|diff|pr)|find (issues|problems|antipatterns))\b/.test(t)) {
+		return { intent: "review", reason: "Review — /review fans out parallel reviewers (advisory, no code changes)." };
 	}
 
-	return { intent: "trivial", reason: "Looks quick — just do it directly." };
+	// RESEARCH — needs evidence from multiple sources.
+	if (/\b(research|investigate|compare|find (evidence|sources)|what (do|does) people|community|benchmark|prior art|is there (a|an) (lib|package|tool))\b/.test(t)) {
+		return { intent: "research", reason: "Needs evidence from multiple sources — /research fans out." };
+	}
+
+	// DEBUG — diagnosis/repair IS the primary deliverable.
+	// cc10x: ERROR wins over BUILD, but route on PRIMARY DELIVERABLE, not first keyword.
+	// "add dark-mode and fix the button" = BUILD (fix is incidental).
+	// "why is login broken" / "debug the payment flow" = DEBUG.
+	const debugFraming = /^(why|debug|diagnos|what.*(wrong|broken|failing)|the (bug|error|crash)|fix the (broken|failing|crash|bug))\b/i.test(t);
+	if (debugVerb && (!buildVerb || debugFraming)) {
+		return { intent: "debug", reason: "Bug diagnosis is the deliverable — /loop builds a feedback loop, finds root cause, fixes (bounded)." };
+	}
+
+	// PLAN — design/architect/spec.
+	if (/\b(plan|design|architect|spec|rfc|brainstorm|how should (we|i) (build|structure)|redesign|restructure|refactor (the|this))\b/.test(t)) {
+		return { intent: "plan", reason: "Design question — /loop runs the plan phase (read-only) first." };
+	}
+
+	// BUILD — changes code. Complexity gradient (cc10x: trivial → reduced path; non-trivial → full loop).
+	if (buildVerb) {
+		const trivialSignal = /\b(typo|rename (this|the)|fix the (spelling|typo)|add a comment|change the (string|text|message)|update the version|bump (the )?version|quick (fix|change)|one-line|small (fix|change|tweak))\b/.test(t);
+		const nonTrivialSignal = /\b(feature|system|endpoint|api|auth|authentication|database|db|migration|integrate|integration|wire up|set up|setup|support for|refactor (the|this)|redesign|restructure|service|layer|pipeline|workflow|orchestrat)\b/.test(t);
+		const manyFiles = (t.match(/\b(src|lib|app|packages?|components?|routes?|models?|controllers?|services?)\//g) || []).length > 1;
+		if (trivialSignal && !nonTrivialSignal) {
+			return { intent: "build-trivial", reason: "Trivial change (1-2 files, single outcome) — just do it, no loop needed." };
+		}
+		if (nonTrivialSignal || manyFiles) {
+			return { intent: "build", reason: "Multi-file / cross-module build — /loop runs plan→build→review→verify→ship (bounded)." };
+		}
+		return { intent: "build", reason: "Build task — /loop for the bounded workflow, or just do it if it stays small." };
+	}
+
+	// Trivial: short, no action verb.
+	if (words.length <= 3) {
+		return { intent: "trivial", reason: "Short task — just do it directly." };
+	}
+	return { intent: "trivial", reason: "No workflow needed — just do it directly." };
 }
 
 // ─── Suggestion mapping ─────────────────────────────────────────────────────
@@ -189,10 +174,12 @@ function suggestionsFor(c: Classification): Suggestion[] {
 	};
 
 	switch (c.intent) {
+		case "orient":
+			return [explore]; // pass-through, no popup
 		case "trivial":
+			return [justDoIt]; // pass-through, no popup
+		case "build-trivial":
 			return [justDoIt, { ...loop, label: "Actually, run /loop anyway" }];
-		case "explore":
-			return [explore, { ...research, label: "Actually, /research this" }];
 		case "build":
 			return [loop, justDoIt, research];
 		case "debug":
@@ -201,7 +188,7 @@ function suggestionsFor(c: Classification): Suggestion[] {
 					...loop,
 					label: "Run /loop (debug: feedback loop → root cause → fix)",
 					description:
-						"debug intent — bounded loop, finds root cause not symptom.",
+					"debug intent — bounded loop, finds root cause not symptom.",
 				},
 				justDoIt,
 				research,
@@ -250,17 +237,15 @@ export default function coachExtension(pi: ExtensionAPI): void {
 
 		// Classify + suggest.
 		const c = classify(text);
-		const suggestions = suggestionsFor(c);
 
-		// If only one obvious option AND it's "just do it", skip the prompt —
-		// zero friction for trivial tasks. (This is the common case.)
-		if (suggestions.length === 1 && suggestions[0].command === null) {
+		// cc10x-style: ORIENT and trivial and build-trivial pass through SILENTLY
+		// (no popup). ORIENT must NEVER fall through to BUILD — it answers inline.
+		// build-trivial defaults to just-do-it. Only real workflows popup.
+		if (c.intent === "orient" || c.intent === "trivial" || c.intent === "build-trivial") {
 			return { action: "continue" };
 		}
-		// If the top suggestion is "just do it" for a trivial task, also skip.
-		if (c.intent === "trivial" && suggestions[0].command === null) {
-			return { action: "continue" };
-		}
+
+		const suggestions = suggestionsFor(c);
 
 		// Show the coach UI: a select with the workflow options.
 		const title = `Coach → ${c.intent.toUpperCase()} — ${c.reason}`;

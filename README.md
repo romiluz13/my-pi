@@ -1,6 +1,6 @@
 # my-pi
 
-**The best Pi coding agent setup — 15 packages, 54 skills, 8 slash commands, 5 custom extensions (incl. coach + loop engine + guardrails), 10-step autonomous workflow. You never have to remember a command — Coach suggests the right one. Every Pi power leveraged. Zero bloat, pure Pi ideology.**
+**The best Pi coding agent setup - 15 packages, 57 skills, 8 slash commands, 5 custom extensions (incl. coach + loop engine + guardrails), 10-step autonomous workflow. You never have to remember a command - Coach suggests the right one. Every Pi power leveraged. Zero bloat, pure Pi ideology.**
 
 [![Pi](https://img.shields.io/badge/Pi-v0.80+-blue.svg)](https://pi.dev)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)

@@ -371,13 +371,19 @@ function phasePrompt(state: LoopState, phase: Phase): string {
 | ERRORS | path:5-20 | … | \`actual snippet\` |
 | LOGGING | path:1-10 | … | \`actual snippet\` |
 | TESTS | path:1-30 | … | \`actual snippet\` |
-Write the plan to .loop-plan.md, including a MIRROR: {file:lines} reference on each future task so BUILD follows real patterns. Then dispatch a fresh reviewer subagent (anti-anchored: give it the plan PATH, not the body) to review the plan.
+Write the plan to .loop-plan.md, including a MIRROR: {file:lines} reference on each future task so BUILD follows real patterns.
+
+**PLAN REVIEW GATE (cc10x steal — fail-closed, 3 checks, 3-try cap):** After writing the plan, run a self-audit BEFORE declaring PLAN done. Output SPEC_GATE_PASS or SPEC_GATE_FAIL:
+1. **Feasibility** — use find/ls/read to verify EVERY referenced file path exists; read 1-2 real files to confirm proposed patterns/libraries match the codebase; flag any invented/unverified file assumptions; verify dependency ordering (no circular/forward refs).
+2. **Completeness** — all requirements mapped to plan items; every change has a verification step; edge cases addressed; cross-file integration points listed.
+3. **Scope & Alignment** — matches the request (no different problem); no scope creep (extra abstractions/refactors beyond request); no under-scoping; complexity proportional.
+If SPEC_GATE_FAIL: revise the plan and re-run (max 3 tries → ESCALATE). No "approved with comments" — PASS or FAIL only. Fabricated paths are the #1 plan failure mode.
 
 **PLAN_CHECKPOINT (satisfy ALL before signaling completion):**
 - [ ] At least 3 similar implementations found with file:line refs
 - [ ] Code snippets in the patterns table are ACTUAL (copy-pasted from codebase, not invented)
 - [ ] Plan written to .loop-plan.md with MIRROR refs on each task
-- [ ] Plan reviewed by a fresh subagent
+- [ ] SPEC_GATE_PASS (feasibility + completeness + scope checks all passed)
 Report when the checkpoint is satisfied.`;
 		case "build":
 			return `${base}BUILD phase (full toolset). Implement per the plan (.loop-plan.md). Read each task's MIRROR: {file:lines} reference and follow that real pattern exactly.
@@ -649,14 +655,18 @@ function setupHooks(pi: ExtensionAPI): void {
 
 			// Loop back to BUILD. Fork the session first so this iteration is a
 			// rewindable branch point (composes on pi-rewind, which owns undo).
-			try { await ctx.fork(); } catch { /* fork best-effort; never block the loop */ }
+			try {
+				await ctx.fork();
+			} catch {
+				/* fork best-effort; never block the loop */
+			}
 			active.phase = "build";
 			applyPhaseTools(pi, "build");
 			persist(active);
 			recordStatus(ctx);
 			await steer(
 				ctx,
-				`${phasePrompt(active, "build")}\n\nRemediation iteration ${active.iteration}: fix the verify failures (score ${score}, honesty hits: ${honestyHits.join(", ") || "none"}, convergence: ${converged ? "yes" : "no"}).`,
+				`${phasePrompt(active, "build")}\n\nRemediation iteration ${active.iteration}: fix the verify failures (score ${score}, honesty hits: ${honestyHits.join(", ") || "none"}, convergence: ${converged ? "yes" : "no"}).\n\n**Change an input before re-dispatching (cc10x steal):** do NOT retry the same task with the same approach — that just burns a cycle and reproduces the failure. Change at least one: narrow the scope, escalate the model tier (Ctrl+L mid-session), change the approach/tool, OR if the plan itself is wrong — STOP and ask the human (do not loop). **Bidirectional verify:** before implementing the fix, confirm the fix is in the right direction — if the PLAN is wrong, fix the plan, not the code.`,
 			);
 			return;
 		}
@@ -686,14 +696,18 @@ function setupHooks(pi: ExtensionAPI): void {
 				});
 				logEvent(active, `review_findings iter=${active.iteration}`);
 				// Fork so this retry is a rewindable branch point.
-				try { await ctx.fork(); } catch { /* fork best-effort */ }
+				try {
+					await ctx.fork();
+				} catch {
+					/* fork best-effort */
+				}
 				active.phase = "build";
 				applyPhaseTools(pi, "build");
 				persist(active);
 				recordStatus(ctx);
 				await steer(
 					ctx,
-					`${phasePrompt(active, "build")}\n\nRemediation iteration ${active.iteration}: address the CRITICAL/HIGH review findings.`,
+					`${phasePrompt(active, "build")}\n\nRemediation iteration ${active.iteration}: address the CRITICAL/HIGH review findings.\n\n**Change an input before re-dispatching (cc10x steal):** do NOT retry the same approach — narrow scope, escalate model tier (Ctrl+L), change approach/tool, or if the plan is wrong STOP and ask the human.`,
 				);
 				return;
 			}
