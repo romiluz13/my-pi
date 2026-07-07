@@ -50,42 +50,54 @@ interface DomainSkill {
 
 const DOMAIN_SKILLS: DomainSkill[] = [
 	{
-		pattern: /\b(mongodb|mongo|atlas|mongoose|schema design|aggregation pipeline|vector search|atlas search|collection|index)\b/i,
-		skills: ["mongodb-schema-design", "mongodb-query-optimizer", "mongodb-search-and-ai"],
+		pattern:
+			/\b(mongodb|mongo|atlas|mongoose|schema design|aggregation pipeline|vector search|atlas search|collection|index)\b/i,
+		skills: [
+			"mongodb-schema-design",
+			"mongodb-query-optimizer",
+			"mongodb-search-and-ai",
+		],
 		label: "MongoDB",
 	},
 	{
-		pattern: /\b(vercel|next\.?js|nextjs|sveltekit|nuxt|astro|deploy to vercel|ssr|rsc|server component|react)\b/i,
+		pattern:
+			/\b(vercel|next\.?js|nextjs|sveltekit|nuxt|astro|deploy to vercel|ssr|rsc|server component|react)\b/i,
 		skills: ["vercel-react-best-practices", "vercel-composition-patterns"],
 		label: "Vercel/React",
 	},
 	{
-		pattern: /\b(ui|frontend|interface|landing page|dashboard|component|design system|css|tailwind|button|form|layout|responsive|accessibility|a11y|polish|redesign the (ui|interface|page))\b/i,
+		pattern:
+			/\b(ui|frontend|interface|landing page|dashboard|component|design system|css|tailwind|button|form|layout|responsive|accessibility|a11y|polish|redesign the (ui|interface|page))\b/i,
 		skills: ["frontend-design", "impeccable", "web-design-guidelines"],
 		label: "UI/Frontend",
 	},
 	{
-		pattern: /\b(scrape|scraping|serp|web data|extract data|bright data|bdata|crawl|spider|structured data from)\b/i,
+		pattern:
+			/\b(scrape|scraping|serp|web data|extract data|bright data|bdata|crawl|spider|structured data from)\b/i,
 		skills: ["search", "scrape", "data-feeds", "brightdata-cli"],
 		label: "Web scraping/data",
 	},
 	{
-		pattern: /\b(octocode|evidence-first|prior art|code research|inspect code|npm package|github search|library internals)\b/i,
+		pattern:
+			/\b(octocode|evidence-first|prior art|code research|inspect code|npm package|github search|library internals)\b/i,
 		skills: ["octocode", "octocode-research"],
 		label: "Code research",
 	},
 	{
-		pattern: /\b(python|pip|venv|uv run|pyproject|fastapi|django|flask|poetry)\b/i,
+		pattern:
+			/\b(python|pip|venv|uv run|pyproject|fastapi|django|flask|poetry)\b/i,
 		skills: ["uv"],
 		label: "Python",
 	},
 	{
-		pattern: /\b(github issue|github pr|gh cli|create a pr|open an issue|ci pipeline|github action)\b/i,
+		pattern:
+			/\b(github issue|github pr|gh cli|create a pr|open an issue|ci pipeline|github action)\b/i,
 		skills: ["github"],
 		label: "GitHub",
 	},
 	{
-		pattern: /\b(memory|remember this|gotcha|lesson|failure|insight|compounding)\b/i,
+		pattern:
+			/\b(memory|remember this|gotcha|lesson|failure|insight|compounding)\b/i,
 		skills: ["memory-compounding"],
 		label: "Memory",
 	},
@@ -98,7 +110,9 @@ function detectDomains(text: string): DomainSkill[] {
 function buildSkillHint(text: string): string | null {
 	const domains = detectDomains(text);
 	if (domains.length === 0) return null;
-	const parts = domains.map((d) => `${d.label}: activate ${d.skills.join(", ")}`);
+	const parts = domains.map(
+		(d) => `${d.label}: activate ${d.skills.join(", ")}`,
+	);
 	return `[Coach capability activation — ${parts.join(" | ")}]`;
 }
 
@@ -123,7 +137,9 @@ type Intent =
 	| "implement" // execute a spec/plan — /implement
 	| "compact" // session too long — /compact-safe
 	| "triage" // prioritize issues — /triage
-	| "write-skill"; // create a skill — /writing-great-skills
+	| "write-skill" // create a skill — /writing-great-skills
+	| "wayfinder" // fog of war — wayfinder skill (auto)
+	| "prototype"; // sanity-check by building — prototype skill (auto)
 
 interface Classification {
 	intent: Intent;
@@ -243,23 +259,54 @@ function classify(text: string): Classification {
 	}
 
 	// IMPLEMENT — execute a spec/plan (distinct from BUILD: there's already a spec).
-	if (/\b(implement the (spec|plan)|execute the (spec|plan)|run the implementation|build from the spec|execute the tickets)\b/.test(t)) {
-		return { intent: "implement", reason: "Spec/plan exists — /implement is the TDD + code-review + commit execution wrapper." };
+	if (
+		/\b(implement the (spec|plan)|execute the (spec|plan)|run the implementation|build from the spec|execute the tickets)\b/.test(
+			t,
+		)
+	) {
+		return {
+			intent: "implement",
+			reason:
+				"Spec/plan exists — /implement is the TDD + code-review + commit execution wrapper.",
+		};
 	}
 
 	// COMPACT — session getting long, clean up context.
-	if (/\b(compact (the )?session|compact-safe|clean up context|session (is )?(too )?long|running low on context|free up context)\b/.test(t)) {
-		return { intent: "compact", reason: "Context management — /compact-safe compacts while preserving constraints + errors verbatim." };
+	if (
+		/\b(compact (the )?session|compact-safe|clean up context|session (is )?(too )?long|running low on context|free up context)\b/.test(
+			t,
+		)
+	) {
+		return {
+			intent: "compact",
+			reason:
+				"Context management — /compact-safe compacts while preserving constraints + errors verbatim.",
+		};
 	}
 
 	// TRIAGE — prioritize issues/backlog.
-	if (/\b(triage|prioriti[sz]e (the )?(issues|backlog|tickets|bugs)|organize (the )?backlog|sort (the )?issues)\b/.test(t)) {
-		return { intent: "triage", reason: "Issue prioritization — /triage sorts issues by impact/effort." };
+	if (
+		/\b(triage|prioriti[sz]e (the )?(issues|backlog|tickets|bugs)|organize (the )?backlog|sort (the )?issues)\b/.test(
+			t,
+		)
+	) {
+		return {
+			intent: "triage",
+			reason: "Issue prioritization — /triage sorts issues by impact/effort.",
+		};
 	}
 
 	// WRITE-SKILL — create a new skill.
-	if (/\b(write a skill|create a skill|build a skill|author a skill|make a skill)\b/.test(t)) {
-		return { intent: "write-skill", reason: "Skill authoring — /writing-great-skills guides the skill creation process." };
+	if (
+		/\b(write a skill|create a skill|build a skill|author a skill|make a skill)\b/.test(
+			t,
+		)
+	) {
+		return {
+			intent: "write-skill",
+			reason:
+				"Skill authoring — /writing-great-skills guides the skill creation process.",
+		};
 	}
 
 	// DEBUG — diagnosis/repair IS the primary deliverable.
@@ -288,6 +335,35 @@ function classify(text: string): Classification {
 			intent: "refactor",
 			reason:
 				"Structural improvement — /improve-codebase-architecture (read-only diagnose, then BUILD with gates).",
+		};
+	}
+
+	// WAYFINDER — fog of war: loose idea, don't know what to build yet.
+	// Distinct from PLAN (which has a concrete target). wayfinder charts
+	// investigation tickets to figure out WHAT to build. Auto-skill, activated
+	// via hint (not a slash command).
+	if (
+		/\b(loose idea|foggy|fog of war|not sure what to build|don't know what to build|figure out what to build|not sure where to start|where do i start|too big to wrap my head around|break this (vague |loose )?idea down|explore (options|directions) for|what should i (build|make|create))\b/.test(
+			t,
+		)
+	) {
+		return {
+			intent: "wayfinder",
+			reason:
+				"Foggy problem — wayfinder charts investigation tickets to figure out WHAT to build.",
+		};
+	}
+
+	// PROTOTYPE — sanity-check by building throwaway code. Auto-skill.
+	if (
+		/\b(prototype|sanity[- ]check|throwaway|see if it feels right|spike|quick and dirty|mock[- ]?up|test the waters|explore what the (ui|interface) should look like)\b/.test(
+			t,
+		)
+	) {
+		return {
+			intent: "prototype",
+			reason:
+				"Design question answerable by building — prototype is throwaway code that answers it.",
 		};
 	}
 
@@ -357,6 +433,8 @@ interface Suggestion {
 	label: string; // the workflow command
 	command: string | null; // null = "just do it" (no transform)
 	description: string;
+	skill?: string; // auto-skill to activate via hint (no slash command exists)
+	skillWhy?: string; // why this skill — injected into the hint
 }
 
 function suggestionsFor(c: Classification): Suggestion[] {
@@ -451,7 +529,8 @@ function suggestionsFor(c: Classification): Suggestion[] {
 	const compactSafe: Suggestion = {
 		label: "Run /compact-safe (context cleanup)",
 		command: "/compact-safe",
-		description: "Compact the session — keep constraints + errors verbatim, drop prose.",
+		description:
+			"Compact the session — keep constraints + errors verbatim, drop prose.",
 	};
 	const triage: Suggestion = {
 		label: "Run /triage (prioritize issues)",
@@ -461,7 +540,25 @@ function suggestionsFor(c: Classification): Suggestion[] {
 	const writeSkill: Suggestion = {
 		label: "Run /writing-great-skills",
 		command: "/writing-great-skills",
-		description: "Guide the skill creation process — structure, triggers, pitfalls.",
+		description:
+			"Guide the skill creation process — structure, triggers, pitfalls.",
+	};
+	// Auto-skills surfaced as primary suggestions (no slash command — activated via hint).
+	const wayfinder: Suggestion = {
+		label: "Use wayfinder (chart investigation tickets)",
+		command: null,
+		skill: "wayfinder",
+		skillWhy: "chart a route through this foggy problem via investigation tickets on the issue tracker",
+		description:
+			"Turn a loose idea into a shared map of investigation tickets, resolved one at a time. For when you don't know WHAT to build yet.",
+	};
+	const prototypeSkill: Suggestion = {
+		label: "Use prototype (throwaway sanity-check)",
+		command: null,
+		skill: "prototype",
+		skillWhy: "build throwaway code that answers this design question, then discard",
+		description:
+			"Throwaway code that answers a design question. For when you need to see if a state model or UI feels right.",
 	};
 	// The universal escape hatch — fuzzy-search ALL commands.
 	const palette: Suggestion = {
@@ -532,13 +629,21 @@ function suggestionsFor(c: Classification): Suggestion[] {
 		case "setup":
 			return [wizard, palette];
 		case "implement":
-			return [implement, { ...feature, label: "Or /feature (full chain)" }, palette];
+			return [
+				implement,
+				{ ...feature, label: "Or /feature (full chain)" },
+				palette,
+			];
 		case "compact":
 			return [compactSafe, palette];
 		case "triage":
 			return [triage, palette];
 		case "write-skill":
 			return [writeSkill, palette];
+		case "wayfinder":
+			return [wayfinder, plan, { ...research, label: "Or /research first" }, justDoIt, palette];
+		case "prototype":
+			return [prototypeSkill, plan, { ...loop, label: "Or /loop (build for real)" }, justDoIt, palette];
 	}
 }
 
@@ -594,22 +699,39 @@ export default function coachExtension(pi: ExtensionAPI): void {
 		if (choice === undefined) {
 			// Esc / cancel = just do it (don't block the user).
 			// Still inject the skill hint so domain skills activate even on cancel.
-			if (skillHint) return { action: "transform", text: `${skillHint}\n${text}` };
+			if (skillHint)
+				return { action: "transform", text: `${skillHint}\n${text}` };
 			return { action: "continue" };
 		}
 
 		const picked = suggestions.find((s) => s.label === choice) ?? null;
+
+		// Build the intent-level skill hint (for auto-skills like wayfinder/prototype
+		// that have no slash command — activated via hint instead).
+		const intentHint =
+			picked?.skill && picked.skillWhy
+				? `[Coach: activate the ${picked.skill} skill — ${picked.skillWhy}]`
+				: null;
+		const combinedHint = [skillHint, intentHint]
+			.filter(Boolean)
+			.join(" ");
+
 		if (!picked || picked.command === null) {
-			// "Just do it" — pass the original text through, but inject the skill hint
-			// so the agent still activates the domain skills (autonomous capability).
-			if (skillHint) return { action: "transform", text: `${skillHint}\n${text}` };
+			// "Just do it" or an auto-skill suggestion (wayfinder/prototype) — pass the
+			// original text through, but inject the skill hint(s) so the agent activates
+			// the domain skills + the intent-level skill (autonomous capability).
+			if (combinedHint)
+				return { action: "transform", text: `${combinedHint}\n${text}` };
 			return { action: "continue" };
 		}
 
 		// Transform the input into the chosen slash command, with the task filled in.
-		// Embed the skill-activation hint in the task so the agent loads the skills.
-		const taskText = skillHint ? `${text} ${skillHint}` : text;
-		const command = picked.command.replace("$TASK", taskText.replace(/"/g, '\\"'));
+		// Embed the skill-activation hint(s) in the task so the agent loads the skills.
+		const taskText = combinedHint ? `${text} ${combinedHint}` : text;
+		const command = picked.command.replace(
+			"$TASK",
+			taskText.replace(/"/g, '\\"'),
+		);
 		return { action: "transform", text: command };
 	});
 
