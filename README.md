@@ -1,6 +1,6 @@
 # my-pi
 
-**The best Pi coding agent setup - 15 packages, 58 skills, 9 slash commands, 5 custom extensions (incl. coach + loop engine + guardrails), 10-step autonomous workflow. You never have to remember a command - Coach suggests the right one and activates the right skills. Every Pi power leveraged. Self-maintaining via /setup-audit. Zero bloat, pure Pi ideology.**
+**The best Pi coding agent setup - 14 packages, 56 skills, 9 slash commands, 5 custom extensions (incl. coach + loop engine + guardrails), 10-step autonomous workflow. You never have to remember a command - Coach routes your task via LLM judgment and activates the right skills. Every Pi power leveraged. Self-maintaining via /setup-audit. Zero bloat, pure Pi ideology.**
 
 [![Pi](https://img.shields.io/badge/Pi-v0.80+-blue.svg)](https://pi.dev)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
@@ -76,7 +76,7 @@ Every task flows through these steps automatically. The workflow IS the skill ro
 
 ---
 
-## 15 Pi Packages
+## 14 Pi Packages
 
 Every package earns its slot. No duplicates, no bloat.
 
@@ -86,7 +86,6 @@ Every package earns its slot. No duplicates, no bloat.
 | pi-observational-memory | Within-session memory that survives compaction — observations + reflections |
 | pi-subagents | Delegate to child agents — review, scout, parallel work, chains |
 | pi-lens | LSP diagnostics, linters, formatters, ast-grep rules on every edit |
-| @hypabolic/pi-hypa | Summarize old tool outputs → 60-80% token savings on long sessions |
 | @narumitw/pi-statusline | Model, tokens, cost, git branch in status bar |
 | pi-intercom | Subagents can ask parent session when blocked — planner-worker coordination |
 | pi-prompt-template-model | Slash commands auto-switch model + skills, then restore |
@@ -94,8 +93,8 @@ Every package earns its slot. No duplicates, no bloat.
 | @juicesharp/rpiv-ask-user-question | Structured clarifying questions instead of guessing |
 | pi-rewind | `/rewind` — checkpoint browser, diff preview, redo stack |
 | pi-web-access | `web_search` + `fetch_content` tools — YouTube transcripts, PDFs, video analysis |
-| @spences10/pi-confirm-destructive | Git-aware confirmation layer for destructive ops (rm unrecoverable, git reset --hard, destructive SQL, disk tools). Placed BEFORE pi-hypa so it sees the original command. Aligns with AGENTS.md Safety section. |
-| @spences10/pi-context | SQLite FTS sidecar for oversized tool output (>24KB/300 lines) — stores out-of-context, returns a receipt, retrievable via `context_search`/`context_get`. Complements pi-hypa (compresses in-context; pi-context stores out-of-context). |
+| @spences10/pi-confirm-destructive | Git-aware confirmation layer for destructive ops (rm unrecoverable, git reset --hard, destructive SQL, disk tools). Aligns with AGENTS.md Safety section. |
+| @spences10/pi-context | SQLite FTS sidecar for oversized tool output (>24KB/300 lines) — stores out-of-context, returns a receipt, retrievable via `context_search`/`context_get`. |
 | @spences10/pi-observability | Live local browser dashboard (port 43190) + SSE event stream. Read-only forwarder — never mutates agent state, never touches the footer (pi-statusline owns it), never spawns LSP (pi-lens owns it), redacts secrets before streaming. `/observability` to open. |
 
 ### Two Memory Layers (structural advantage)
@@ -115,13 +114,13 @@ User-local TypeScript glue in `extensions/` — the Pi way: primitives, not feat
 
 | Extension | Trigger | What it does |
 | --------- | -------- | ------------ |
-| `coach.ts` | automatic (every input) | **The adoption layer.** You type a task in plain English; Coach classifies it and suggests the right workflow (/loop, /research, /review, /ship, or "just do it"). One-tap confirm — you never remember a command. Skip with `!` prefix or `/coach off`. |
+| `coach.ts` | automatic (every input) | **The adoption layer.** You type a task in plain English; Coach routes it via LLM judgment (deepseek-v4-flash) over the **live** command catalog (`pi.getCommands()` — never hard-coded, so adding a skill needs zero edit) and suggests the right workflow (/loop, /feature, /research, /review, /ship, or "just do it"). One-tap confirm — you never remember a command. Skip with `!` prefix or `/coach off`. |
 | `palette.ts` | `Ctrl+Shift+P` / `/palette` | Fuzzy command palette over **every** slash command (prompts + skills + extension commands). Discovers dynamically via `pi.getCommands()` — zero drift. Inserts `/<cmd>` into the editor for native dispatch. |
 | `handoff.ts` | `/handoff [next task]` | Generates a self-contained `HANDOFF.md` from the session ledger and drafts a continuation prompt. **Deterministic — no LLM call**, so it never competes with the memory layers' background work. |
 | `loop.ts` | `/loop "<task>"` / `Ctrl+Shift+L` | **Bounded loop engine** — pre-flight contract gate → plan → build → review → verify → ship, with remediation loop-back (cap 3), plateau detection, independent verifier convergence (santa, cross-model opt-in), test-honesty gates, reconciliation over assertion. Three exits: PASS / CAP / WEDGE. Owns one new axis (durable workflow state + gates), composes on all 12 packages via steering, registers zero tools. |
-| `guardrails.ts` | automatic (every turn) | Re-injects a HARD RULES block from AGENTS.md into the system prompt every turn via `before_agent_start`. Defeats the "I didn't pay attention to AGENTS.md" failure + survives compaction. `/guardrails on\|off\|test`. Prominence tier (research: ~90-95% reliable); upgrade path to `tool_call` gates documented. |
+| `guardrails.ts` | automatic (session start + compaction) | Injects the full HARD RULES block from AGENTS.md on session start and after compaction (when context is genuinely lost); a 1-line reminder otherwise — avoids the reasoning-saturation cost of re-injecting the full rulebook every turn (ETH Zurich evidence: full re-injection breaks reasoning +20% cost). `/guardrails on\|off\|test`. |
 
-**Harmony audit** (3 fresh-context reviewers): 0 critical/major conflicts across all 12 packages + 2 extensions. Full reports in [`docs/audits/`](docs/audits/).
+**Harmony audit** (3 fresh-context reviewers): 0 critical/major conflicts across all 14 packages + 5 extensions. Full reports in [`docs/audits/`](docs/audits/).
 
 ---
 
@@ -226,7 +225,7 @@ Loaded automatically by installed packages.
 
 ### What we adopted from spences10/my-pi (after 3-reviewer conflict audit)
 
-Adopted (new axes, zero conflict, read the code first): `@spences10/pi-confirm-destructive` (destructive-command gate, aligns with AGENTS.md Safety), `@spences10/pi-context` (oversized-output SQLite sidecar, complements pi-hypa), `@spences10/pi-observability` (read-only browser dashboard). Full audit with file:line evidence in `docs/audits/`.
+Adopted (new axes, zero conflict, read the code first): `@spences10/pi-confirm-destructive` (destructive-command gate, aligns with AGENTS.md Safety), `@spences10/pi-context` (oversized-output SQLite sidecar), `@spences10/pi-observability` (read-only browser dashboard). Full audit with file:line evidence in `docs/audits/`.
 | GBrain | Personal knowledge brain, not coding, MCP-based |
 | octocode-awareness | Claude Code hooks, conflicts with pi-hermes-memory |
 | 15 bloat skills | Non-coding, one-time, deprecated, or redundant |
@@ -238,7 +237,7 @@ Adopted (new axes, zero conflict, read the code first): `@spences10/pi-confirm-d
 The installer creates a single source of truth at `~/.ai/AGENTS.md` and wires all three agents to load it:
 
 ```
-~/.ai/AGENTS.md  (real file, 124 lines)
+~/.ai/AGENTS.md  (real file, 131 lines)
      ↑              ↑              ↑
      symlink        @import        symlink
      Pi             Claude Code    Codex
@@ -248,7 +247,7 @@ The installer creates a single source of truth at `~/.ai/AGENTS.md` and wires al
 - **Claude Code**: `~/.claude/CLAUDE.md` contains `@~/.ai/AGENTS.md`
 - **Codex**: `~/.codex/AGENTS.md` → symlink to `~/.ai/AGENTS.md`
 
-All three agents read the same 124-line workflow on every session start. One file, three agents, zero drift.
+All three agents read the same 131-line workflow on every session start. One file, three agents, zero drift.
 
 ---
 
@@ -259,8 +258,8 @@ my-pi/
 ├── README.md                          This file
 ├── LICENSE                            MIT
 ├── config/
-│   ├── settings.json                  12 packages, high thinking, tuned compaction
-│   ├── agents.md                      Global AGENTS.md (124 lines, 10-step workflow)
+│   ├── settings.json                  14 packages, high thinking, tuned compaction
+│   ├── agents.md                      Global AGENTS.md (131 lines, 10-step workflow)
 │   ├── models.json                    Grove provider compat config
 │   └── prompts/                       8 slash commands (the user interface)
 │       ├── build.md                   /build → TDD
@@ -298,7 +297,7 @@ This setup respects that. Every capability is an extension, skill, or CLI — ne
 
 ## Every Pi Power Leveraged
 
-Beyond the 15 packages + 5 extensions + 54 skills, the setup pulls every zero-risk lever the Pi docs offer (full audit in [`docs/audits/pi-docs-levers.md`](docs/audits/pi-docs-levers.md) + [`docs/audits/pi-extension-api-powers.md`](docs/audits/pi-extension-api-powers.md)):
+Beyond the 14 packages + 5 extensions + 56 skills, the setup pulls every zero-risk lever the Pi docs offer (full audit in [`docs/audits/pi-docs-levers.md`](docs/audits/pi-docs-levers.md) + [`docs/audits/pi-extension-api-powers.md`](docs/audits/pi-extension-api-powers.md)):
 
 | Lever | What it does |
 | --------- | ------------ |
@@ -311,10 +310,10 @@ Beyond the 15 packages + 5 extensions + 54 skills, the setup pulls every zero-ri
 | `ctx.fork()` in loop.ts | Each remediation iteration is a rewindable branch point (composes on pi-rewind) |
 | `defaultThinkingLevel: xhigh` | Max reasoning on every turn + all 8 subagent roles |
 | Two-layer memory | pi-hermes-memory (cross-session SQLite FTS5) + pi-observational-memory (within-session, survives compaction) |
-| Context sidecar | @spences10/pi-context stores oversized output (>24KB) in SQLite, retrievable — complements pi-hypa compression |
+| Context sidecar | @spences10/pi-context stores oversized output (>24KB) in SQLite, retrievable via `context_search`/`context_get` |
 | Live observability | @spences10/pi-observability browser dashboard at 127.0.0.1:43190 |
 
-**Nothing wasted, nothing over-built.** Every lever is zero-risk (no new moving parts) and harmony-audited (0 critical/major conflicts across all 15 packages + 5 extensions — audits in `docs/audits/`).
+**Nothing wasted, nothing over-built.** Every lever is zero-risk (no new moving parts) and harmony-audited (0 critical/major conflicts across all 14 packages + 5 extensions — audits in `docs/audits/`).
 
 > **Note on `PI_CACHE_RETENTION`:** the Pi docs list this env var for extended prompt caching (Anthropic 1h / OpenAI 24h), but it is **NOT compatible with custom OpenAI-compatible gateways** — it injects a `prompt_cache_retention` field the gateway rejects with a 400. Skip it if your provider is a proxy/gateway (like our grove-openai). It only works against native Anthropic/OpenAI endpoints.
 
