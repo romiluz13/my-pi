@@ -134,7 +134,10 @@ export default function guardrailsExtension(pi: ExtensionAPI): void {
 		if (fullInjectNext) {
 			const agentsMd = findAgentsMd(event.systemPromptOptions?.contextFiles);
 			if (!agentsMd && cfg.warnIfMissing) {
-				ctx.ui.notify("guardrails: AGENTS.md not found in contextFiles — no rules to re-inject.", "warning");
+				ctx.ui.notify(
+					"guardrails: AGENTS.md not found in contextFiles — no rules to re-inject.",
+					"warning",
+				);
 			}
 			fullInjectNext = false;
 			return { systemPrompt: event.systemPrompt + rulesBlock(agentsMd, cfg) };
