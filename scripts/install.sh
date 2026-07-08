@@ -72,11 +72,11 @@ info "Pi settings configured"
 
 # ── Packages ───────────────────────────────────────────────────────────────
 
-step "Installing 15 Pi packages"
+step "Installing 14 Pi packages"
 
-# Order matters: confirm-destructive must run BEFORE pi-hypa so it sees
-# the original bash command (not hypa's rewritten form). pi-context must
-# run BEFORE pi-lens so large-output receipts don't replace lens diagnostics.
+# Order matters: confirm-destructive must run BEFORE the rest so it sees
+# the original bash command. pi-context must run BEFORE pi-lens so
+# large-output receipts don't replace lens diagnostics.
 PACKAGES=(
 	@spences10/pi-confirm-destructive
 	@spences10/pi-context
@@ -85,7 +85,6 @@ PACKAGES=(
 	pi-subagents
 	@spences10/pi-observability
 	pi-lens
-	@hypabolic/pi-hypa
 	@narumitw/pi-statusline
 	pi-intercom
 	pi-prompt-template-model

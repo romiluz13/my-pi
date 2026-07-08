@@ -14,7 +14,7 @@
  *
  * Harmony contract:
  * - Owns NO axis. Registers NO tools. Hooks NO tool_call (does not touch the
- *   pi-hypa/pi-rewind/loop.ts tool_call handlers at all).
+ *   pi-rewind/loop.ts tool_call handlers at all).
  * - before_agent_start is already used by pi-hermes-memory (memory policy),
  *   pi-prompt-template-model (run-prompt guidance), and pi-rewind (snapshot
  *   side-effect) — all APPEND-ONLY. This handler is append-only too. Pi chains

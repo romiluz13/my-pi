@@ -14,7 +14,7 @@
  * Harmony contract:
  * - Owns NO axis. Registers NO tools. Hooks NO tool_call, NO before_agent_start.
  * - The `input` event is NOT used by any installed package (pi-hermes-memory,
- *   pi-observational-memory, pi-prompt-template-model, pi-rewind, pi-hypa,
+ *   pi-observational-memory, pi-prompt-template-model, pi-rewind,
  *   pi-btw, pi-subagents, pi-lens, pi-web-access, pi-intercom, pi-statusline,
  *   palette/handoff/loop — none hook `input`). This is a free axis.
  * - Skips source:"extension" messages (agent-injected steers) so it never
@@ -568,7 +568,8 @@ function suggestionsFor(c: Classification): Suggestion[] {
 		label: "Use wayfinder (chart investigation tickets)",
 		command: null,
 		skill: "wayfinder",
-		skillWhy: "chart a route through this foggy problem via investigation tickets on the issue tracker",
+		skillWhy:
+			"chart a route through this foggy problem via investigation tickets on the issue tracker",
 		description:
 			"Turn a loose idea into a shared map of investigation tickets, resolved one at a time. For when you don't know WHAT to build yet.",
 	};
@@ -576,7 +577,8 @@ function suggestionsFor(c: Classification): Suggestion[] {
 		label: "Use prototype (throwaway sanity-check)",
 		command: null,
 		skill: "prototype",
-		skillWhy: "build throwaway code that answers this design question, then discard",
+		skillWhy:
+			"build throwaway code that answers this design question, then discard",
 		description:
 			"Throwaway code that answers a design question. For when you need to see if a state model or UI feels right.",
 	};
@@ -663,9 +665,21 @@ function suggestionsFor(c: Classification): Suggestion[] {
 		case "audit":
 			return [setupAudit, palette];
 		case "wayfinder":
-			return [wayfinder, plan, { ...research, label: "Or /research first" }, justDoIt, palette];
+			return [
+				wayfinder,
+				plan,
+				{ ...research, label: "Or /research first" },
+				justDoIt,
+				palette,
+			];
 		case "prototype":
-			return [prototypeSkill, plan, { ...loop, label: "Or /loop (build for real)" }, justDoIt, palette];
+			return [
+				prototypeSkill,
+				plan,
+				{ ...loop, label: "Or /loop (build for real)" },
+				justDoIt,
+				palette,
+			];
 	}
 }
 
@@ -734,9 +748,7 @@ export default function coachExtension(pi: ExtensionAPI): void {
 			picked?.skill && picked.skillWhy
 				? `[Coach: activate the ${picked.skill} skill — ${picked.skillWhy}]`
 				: null;
-		const combinedHint = [skillHint, intentHint]
-			.filter(Boolean)
-			.join(" ");
+		const combinedHint = [skillHint, intentHint].filter(Boolean).join(" ");
 
 		if (!picked || picked.command === null) {
 			// "Just do it" or an auto-skill suggestion (wayfinder/prototype) — pass the

@@ -23,9 +23,9 @@
  *   (setActiveTools) + blocking violations (on('tool_call') {block}).
  * - Durable state lives at ~/.pi/workflows/{wf}.json — does NOT touch hermes
  *   SQLite or observational ledger.
- * - on('tool_call') is additive: pi-rewind (snapshots) and pi-hypa (bash
- *   rewrite) hook the same event for different concerns; this hook only
- *   blocks tools outside the current phase allowlist.
+ * - on('tool_call') is additive: pi-rewind (snapshots) hooks the same
+ *   event for a different concern; this hook only blocks tools outside
+ *   the current phase allowlist.
  * - setStatus('loop', …) is an additive status slot; pi-statusline owns the
  *   footer render.
  *

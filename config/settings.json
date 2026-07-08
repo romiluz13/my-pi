@@ -34,7 +34,6 @@
   "packages": [
     "npm:@spences10/pi-confirm-destructive",
     "npm:@spences10/pi-context",
-    "npm:@hypabolic/pi-hypa",
     "npm:@juicesharp/rpiv-ask-user-question",
     "npm:@narumitw/pi-statusline",
     "npm:pi-btw",
