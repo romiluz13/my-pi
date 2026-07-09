@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Update all my-pi packages and skills
-set -euo pipe-fail
+set -euo pipefail
 
 BOLD="\033[1m"
 GREEN="\033[0;32m"
@@ -20,16 +20,16 @@ info "Native modules rebuilt"
 step "Updating Bright Data skills"
 BD_REPO="$HOME/.my-pi-sources/brightdata-skills"
 if [ -d "$BD_REPO" ]; then
-  (cd "$BD_REPO" && git pull --ff-only 2>&1 | tail -1)
-  info "Bright Data skills updated"
+	(cd "$BD_REPO" && git pull --ff-only 2>&1 | tail -1)
+	info "Bright Data skills updated"
 else
-  echo "  Bright Data repo not found — run install.sh first"
+	echo "  Bright Data repo not found — run install.sh first"
 fi
 
 step "Updating Octocode skills"
 OC_SKILLS=(octocode octocode-research octocode-brainstorming octocode-rfc-generator octocode-roast)
 for skill in "${OC_SKILLS[@]}"; do
-  npx octocode skill --name "$skill" --platform pi 2>&1 | tail -1
+	npx octocode skill --name "$skill" --platform pi 2>&1 | tail -1
 done
 info "Octocode skills updated"
 

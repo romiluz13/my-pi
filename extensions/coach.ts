@@ -262,6 +262,10 @@ export default function coachExtension(pi: ExtensionAPI): void {
 		// Classify with the LLM over the live catalog.
 		const catalog = buildCatalog(pi);
 		const valid = catalogNames(catalog);
+		// The /palette escape hatch is filtered out of the LLM-facing catalog (so
+		// the model doesn't suggest it as a "workflow"), but it's a real command —
+		// allow it through the safety check for the hardcoded fallback option.
+		valid.add("palette");
 		const controller = new AbortController();
 		const timeout = setTimeout(() => controller.abort(), LLM_TIMEOUT_MS);
 		let decision: CoachDecision | null = null;
@@ -296,7 +300,9 @@ export default function coachExtension(pi: ExtensionAPI): void {
 			},
 		];
 		// Drop suggestions whose command isn't in the live catalog (defense vs LLM hallucination).
-		const safeSuggestions = suggestions.filter((s) => isCommandSafe(s.command, valid));
+		const safeSuggestions = suggestions.filter((s) =>
+			isCommandSafe(s.command, valid),
+		);
 		if (safeSuggestions.length === 0) return { action: "continue" };
 		const choice = await ctx.ui.select(
 			title,
@@ -323,7 +329,22 @@ export default function coachExtension(pi: ExtensionAPI): void {
 		// Transform the input into the chosen slash command, with the task filled in.
 		// Use a replacement function so $&, $`, $' in user input don't corrupt the command.
 		const taskText = combinedHint ? `${text} ${combinedHint}` : text;
-		const command = picked.command.replace("$TASK", () => taskText.replace(/"/g, '\\"'));
+		const command = picked.command.replace("$TASK", () =>
+			taskText.replace(/"/g, '\\"'),
+		);
+		// Place the command in the editor and end this turn ("handled" = consumed,
+		// nothing sent to the agent). The user presses Enter, which re-enters prompt()
+		// and runs the FULL command dispatch — including extension commands like
+		// /loop, /palette, /handoff that Pi checks on the original text BEFORE the
+		// `input` event. A plain `transform` would bypass that re-check and send
+		// extension commands to the agent as literal text. Prompt-template commands
+		// (/build, /feature, ...) also work via this path (template expansion runs
+		// on re-entry). In non-TUI mode there's no editor to seed, so fall back to
+		// transform (templates still expand; extension commands won't — best effort).
+		if (ctx.mode === "tui") {
+			ctx.ui.setEditorText(command);
+			return { action: "handled" };
+		}
 		return { action: "transform", text: command };
 	});
 

@@ -9,11 +9,6 @@
   "lastChangelogVersion": "0.80.3",
   "defaultProvider": "grove-openai",
   "defaultModel": "FW-GLM-5.2",
-  "retry": {
-    "enabled": true,
-    "maxRetries": 10,
-    "baseDelayMs": 2000
-  },
   "observational-memory": {
     "observeAfterTokens": 10000,
     "reflectAfterTokens": 20000,

@@ -13,11 +13,13 @@ Fuzzy command palette over **every** slash command Pi has registered (prompts,
 skills, extension commands). Discovers dynamically via `pi.getCommands()` — no
 manual registry, no drift when prompts/skills are added.
 
-- **Trigger:** `Ctrl+Shift+P` or `/palette`
+- **Trigger:** `Ctrl+Shift+K` or `/palette`
 - **On select:** inserts `/<command>` into the editor; Pi's native dispatch
   handles execution. Zero re-implementation of any command.
 - **Harmony contract:** owns NO axis (no tools, no events, no storage). Reserves
-  only `Ctrl+Shift+P`. pi-rewind (`Esc+Esc`) and pi-btw (`/btw`) untouched.
+  only `Ctrl+Shift+K` (chosen to avoid the built-in `app.model.cycleBackward` =
+  `shift+ctrl+p`, which `matchesKey` normalizes to the same input). pi-rewind
+  (`Esc+Esc`) and pi-btw (`/btw`) untouched.
 - **Why it exists:** closes the single biggest ideology gap — Pi's primary
   extensibility primitive is the TypeScript extension, and this dir previously
   had zero. Also folds in the telescope/fuzzy-finder gap as one navigation
@@ -148,7 +150,7 @@ against all 12 installed packages:
 - Tools registered: `mcp`, `pi-mcp-probe` — no collision with any installed
   package or built-in.
 - Commands: `/mcp`, `/mcp-auth` — no collision.
-- Shortcuts: none — no keybinding collision with palette (`Ctrl+Shift+P`),
+- Shortcuts: none — no keybinding collision with palette (`Ctrl+Shift+K`),
   pi-rewind (`Esc+Esc`), or pi-btw (`/btw`).
 - Events: `session_start`, `session_shutdown` (additive lifecycle cleanup),
   `tool_result`. The `tool_result` hook only re-flags MCP-tool failures

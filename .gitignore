@@ -8,3 +8,6 @@ web-search.json
 # Internal launch/social drafts — never publish
 docs/launch-post-*.md
 docs/social-posts-*.md
+
+# Subagent artifacts (transient run state)
+.pi-subagents/

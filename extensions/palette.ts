@@ -7,12 +7,15 @@
  * removed. On select, the command is inserted into the editor and Pi's native
  * dispatch handles execution — zero re-implementation of any command.
  *
- * Trigger:  Ctrl+Shift+P   or   /palette
+ * Trigger:  Ctrl+Shift+K   or   /palette
  *
  * Harmony contract:
  * - Reads the command surface from Pi itself (single source of truth).
  * - Owns NO axis: registers no tools, hooks no events, writes no storage.
- * - Reserves only Ctrl+Shift+P. pi-rewind (Esc+Esc) and pi-btw (/btw) untouched.
+ * - Reserves only Ctrl+Shift+K (chosen to avoid the built-in
+ *   app.model.cycleBackward = shift+ctrl+p, which `matchesKey` normalizes to
+ *   the same input as ctrl+shift+p). pi-rewind (Esc+Esc) and pi-btw (/btw)
+ *   untouched.
  *
  * This is the "primitives not features" pattern: a navigation/dispatch
  * primitive that amplifies the existing self-extending surface rather than
@@ -32,7 +35,7 @@ import {
 	type SelectItem,
 } from "@earendil-works/pi-tui";
 
-const SHORTCUT = Key.ctrlShift("p");
+const SHORTCUT = Key.ctrlShift("k");
 const MAX_VISIBLE = 12;
 
 type Source = "prompt" | "skill" | "extension";
@@ -118,7 +121,7 @@ function openPalette(pi: ExtensionAPI, ctx: ExtensionContext): void {
 			container.addChild(footer);
 
 			function renderList(): void {
-				listContainer.clearChildren();
+				listContainer.clear();
 
 				if (filtered.length === 0) {
 					listContainer.addChild(

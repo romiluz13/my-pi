@@ -30,7 +30,7 @@ SKIP_CLI=false
 [[ "${1:-}" == "--skip-cli" ]] && SKIP_CLI=true
 
 echo -e "${BOLD}my-pi installer${RESET}"
-echo -e "The best Pi coding agent setup — 15 packages, 60 skills, 5 custom extensions (incl. coach + loop engine + guardrails), autonomous workflow.\n"
+echo -e "A Pi coding agent config where the workflow decides what to do — 14 packages, 5 custom extensions (coach + loop engine + guardrails), autonomous workflow.\n"
 
 # ── Prerequisites ──────────────────────────────────────────────────────────
 
@@ -52,7 +52,9 @@ mkdir -p "$PI_AGENT_DIR"
 # Merge our settings into existing Pi settings (preserve provider/model)
 if [ -f "$PI_AGENT_DIR/settings.json" ]; then
 	cp "$PI_AGENT_DIR/settings.json" "$PI_AGENT_DIR/settings.json.bak.$(date +%s)"
-	# Keep existing provider/model, add our packages + thinking + compaction + retry + memory
+	# Merge our curated keys over the existing settings, preserving the user's
+	# provider/model/apiKey. Deep-merge so we carry every curated key (not just
+	# a subset) while never clobbering auth/provider choices the user already made.
 	existing=$(cat "$PI_AGENT_DIR/settings.json")
 	ours=$(cat "$SCRIPT_DIR/config/settings.json")
 	echo "$existing" | jq --argjson ours "$ours" '. + {
@@ -61,7 +63,15 @@ if [ -f "$PI_AGENT_DIR/settings.json" ]; then
     "retry": $ours.retry,
     "observational-memory": $ours["observational-memory"],
     "theme": $ours.theme,
-    "packages": $ours.packages
+    "packages": $ours.packages,
+    "subagents": $ours.subagents,
+    "enabledModels": $ours.enabledModels,
+    "treeFilterMode": $ours.treeFilterMode,
+    "defaultProjectTrust": $ours.defaultProjectTrust,
+    "branchSummary": $ours.branchSummary,
+    "externalEditor": $ours.externalEditor,
+    "lastChangelogVersion": $ours.lastChangelogVersion,
+    "npmCommand": $ours.npmCommand
   }' >/tmp/pi-settings-merged.json
 	mv /tmp/pi-settings-merged.json "$PI_AGENT_DIR/settings.json"
 else
@@ -122,7 +132,7 @@ fi
 
 # ── Custom Extensions ─────────────────────────────────────────────────────
 
-step "Installing custom extensions (palette + handoff)"
+step "Installing custom extensions (coach, loop, guardrails, palette, handoff)"
 
 mkdir -p "$PI_AGENT_DIR/extensions"
 for ext in "$SCRIPT_DIR"/extensions/*.ts; do
@@ -133,6 +143,61 @@ for ext in "$SCRIPT_DIR"/extensions/*.ts; do
 done
 # Copy the extensions README (documentation, not code)
 [ -f "$SCRIPT_DIR/extensions/README.md" ] && cp "$SCRIPT_DIR/extensions/README.md" "$PI_AGENT_DIR/extensions/README.md"
-info "Custom extensions installed — /reload in Pi to activate (Ctrl+Shift+P for palette, /handoff for session handoff)"
+info "Custom extensions installed — /reload in Pi to activate (Ctrl+Shift+K for palette, /handoff for session handoff)"
+
+# ── AGENTS.md (single source of truth across Pi + Claude Code + Codex) ──────
+
+step "Installing AGENTS.md (shared across Pi, Claude Code, Codex)"
+
+mkdir -p "${HOME}/.ai" "${HOME}/.codex" "${HOME}/.claude"
+# ~/.ai/AGENTS.md is the real file; the others symlink to it.
+if [ ! -f "${HOME}/.ai/AGENTS.md" ] || ! cmp -s "$SCRIPT_DIR/config/agents.md" "${HOME}/.ai/AGENTS.md"; then
+	cp "$SCRIPT_DIR/config/agents.md" "${HOME}/.ai/AGENTS.md"
+	echo "  installed ~/.ai/AGENTS.md"
+else
+	echo "  ~/.ai/AGENTS.md already up to date"
+fi
+ln -sf "${HOME}/.ai/AGENTS.md" "${PI_AGENT_DIR}/AGENTS.md"
+ln -sf "${HOME}/.ai/AGENTS.md" "${HOME}/.codex/AGENTS.md"
+# Claude Code uses an @import in CLAUDE.md.
+CLAUDE_MD="${HOME}/.claude/CLAUDE.md"
+touch "$CLAUDE_MD"
+if ! grep -q '@~/.ai/AGENTS.md' "$CLAUDE_MD" 2>/dev/null; then
+	printf '\n@~/.ai/AGENTS.md\n' >>"$CLAUDE_MD"
+	echo "  added @~/.ai/AGENTS.md import to ~/.claude/CLAUDE.md"
+else
+	echo "  ~/.claude/CLAUDE.md already imports AGENTS.md"
+fi
+info "AGENTS.md wired across Pi + Claude Code + Codex"
+
+# ── Prompt Templates (the user-facing command surface) ──────────────────────
+
+step "Installing prompt templates"
+
+mkdir -p "$PI_AGENT_DIR/prompts"
+for prompt in "$SCRIPT_DIR"/prompts/*.md; do
+	[ -f "$prompt" ] || continue
+	cp "$prompt" "$PI_AGENT_DIR/prompts/$(basename "$prompt")"
+done
+info "Prompt templates installed ($(ls "$PI_AGENT_DIR/prompts"/*.md 2>/dev/null | wc -l | tr -d ' ') commands)"
+
+# ── Repo Skills ──────────────────────────────────────────────────────────────
+
+step "Installing repo skills"
+
+mkdir -p "$AGENTS_SKILLS_DIR" "$CLAUDE_SKILLS_DIR"
+for skill_dir in "$SCRIPT_DIR"/skills/*/; do
+	[ -d "$skill_dir" ] || continue
+	name=$(basename "$skill_dir")
+	cp -R "$skill_dir" "$AGENTS_SKILLS_DIR/$name"
+done
+# ~/.pi/agent/skills is populated by installed npm packages + fetched skills
+# (Bright Data via update.sh, Octocode via `npx octocode skill`). The repo
+# skills live in ~/.agents/skills which all three agents read.
+info "Repo skills installed to ~/.agents/skills ($(ls -d "$AGENTS_SKILLS_DIR"/*/ 2>/dev/null | wc -l | tr -d ' ') directories)"
 
 # ── Done ───────────────────────────────────────────────────────────────────
+
+echo -e "\n${BOLD}${GREEN}✓ my-pi installed!${RESET}"
+echo -e "Run \`pi\` to start. Type a task in plain English — Coach suggests the workflow."
+echo -e "(Monthly: ./scripts/update.sh · audit: /setup-audit)"

@@ -229,9 +229,9 @@ function applyPhaseTools(pi: ExtensionAPI, phase: Phase): void {
 
 // ─── Steering ───────────────────────────────────────────────────────────────
 
-async function steer(ctx: ExtensionContext, message: string): Promise<void> {
-	// sendUserMessage is on ExtensionContext (ctx), NOT ctx.ui.
-	await ctx.sendUserMessage(message, { deliverAs: "steer" });
+async function steer(pi: ExtensionAPI, message: string): Promise<void> {
+	// sendUserMessage is on ExtensionAPI (pi), NOT on ExtensionContext (ctx).
+	await pi.sendUserMessage(message, { deliverAs: "steer" });
 }
 
 // ─── Intent detection ───────────────────────────────────────────────────────
@@ -482,7 +482,7 @@ async function runLoop(
 	);
 
 	// Phase 0: pre-flight contract (principle 7).
-	await steer(ctx, contractPrompt(request, type));
+	await steer(pi, contractPrompt(request, type));
 	// The contract is filled by the agent's response; the gate is checked in
 	// the turn_end / agent_end hook (see below). We steer, then the hook reads
 	// the latest assistant message for the contract JSON.
@@ -552,7 +552,7 @@ function setupHooks(pi: ExtensionAPI): void {
 				active.iteration++;
 				persist(active);
 				await steer(
-					ctx,
+					pi,
 					`${contractPrompt(active.userRequest, active.workflowType)}\n\nThe previous response did not contain a fenced JSON contract. Output ONLY the contract JSON block.`,
 				);
 				return;
@@ -579,7 +579,7 @@ function setupHooks(pi: ExtensionAPI): void {
 			persist(active);
 			// Enter PLAN proper.
 			applyPhaseTools(pi, "plan");
-			await steer(ctx, phasePrompt(active, "plan"));
+			await steer(pi, phasePrompt(active, "plan"));
 			return;
 		}
 
@@ -587,8 +587,10 @@ function setupHooks(pi: ExtensionAPI): void {
 		const phase = active.phase;
 		const signals: Record<string, RegExp> = {
 			plan: /\bplan (written|done|reviewed|complete)\b|\.loop-plan\.md/i,
+			// BUILD completes ONLY on GREEN — pass/green/GREEN or a real exit-code-0
+			// line. RED/fail/exit≠0 are handled by the RED guard below, not here.
 			build:
-				/\bbuild (done|complete)\b|tests? (pass|green|fail|red)\b|\bRED\b|\bGREEN\b/i,
+				/\bbuild (done|complete)\b|tests? (pass|green)\b|\bGREEN\b|exit(?:\s*code)?\s*[:=]?\s*0\b/i,
 			review: /\breview (done|complete)\b|findings?:|severity:/i,
 			verify: /\bscore\b\D{0,10}(\d+(?:\.\d+)?)/i,
 			ship: /\bcommit(ted)?\b|commit hash:?\s*[0-9a-f]{7,40}/i,
@@ -613,7 +615,7 @@ function setupHooks(pi: ExtensionAPI): void {
 				applyPhaseTools(pi, "ship");
 				persist(active);
 				recordStatus(ctx);
-				await steer(ctx, phasePrompt(active, "ship"));
+				await steer(pi, phasePrompt(active, "ship"));
 				return;
 			}
 
@@ -653,19 +655,19 @@ function setupHooks(pi: ExtensionAPI): void {
 				return;
 			}
 
-			// Loop back to BUILD. Fork the session first so this iteration is a
-			// rewindable branch point (composes on pi-rewind, which owns undo).
-			try {
-				await ctx.fork();
-			} catch {
-				/* fork best-effort; never block the loop */
-			}
+			// Loop back to BUILD. NOTE: a per-iteration rewind checkpoint (forking
+			// the session so this retry is a rewindable branch point) is NOT
+			// implementable from the agent_end event handler — event handlers receive
+			// ExtensionContext, which has no `fork`, and `fork` requires an entryId
+			// only available on ExtensionCommandContext. Deferred until Pi exposes a
+			// session-fork API on ExtensionContext or an event-context action queue.
+			// (The previous try/catch ctx.fork() here was a silent no-op.)
 			active.phase = "build";
 			applyPhaseTools(pi, "build");
 			persist(active);
 			recordStatus(ctx);
 			await steer(
-				ctx,
+				pi,
 				`${phasePrompt(active, "build")}\n\nRemediation iteration ${active.iteration}: fix the verify failures (score ${score}, honesty hits: ${honestyHits.join(", ") || "none"}, convergence: ${converged ? "yes" : "no"}).\n\n**Change an input before re-dispatching:** do NOT retry the same task with the same approach — that just burns a cycle and reproduces the failure. Change at least one: narrow the scope, escalate the model tier (Ctrl+L mid-session), change the approach/tool, OR if the plan itself is wrong — STOP and ask the human (do not loop). **Bidirectional verify:** before implementing the fix, confirm the fix is in the right direction — if the PLAN is wrong, fix the plan, not the code.`,
 			);
 			return;
@@ -695,18 +697,14 @@ function setupHooks(pi: ExtensionAPI): void {
 					ts: new Date().toISOString(),
 				});
 				logEvent(active, `review_findings iter=${active.iteration}`);
-				// Fork so this retry is a rewindable branch point.
-				try {
-					await ctx.fork();
-				} catch {
-					/* fork best-effort */
-				}
+				// Per-iteration rewind checkpoint not available from event handlers
+				// (see verify remediation branch above for the constraint).
 				active.phase = "build";
 				applyPhaseTools(pi, "build");
 				persist(active);
 				recordStatus(ctx);
 				await steer(
-					ctx,
+					pi,
 					`${phasePrompt(active, "build")}\n\nRemediation iteration ${active.iteration}: address the CRITICAL/HIGH review findings.\n\n**Change an input before re-dispatching:** do NOT retry the same approach — narrow scope, escalate model tier (Ctrl+L), change approach/tool, or if the plan is wrong STOP and ask the human.`,
 				);
 				return;
@@ -729,7 +727,7 @@ function setupHooks(pi: ExtensionAPI): void {
 			applyPhaseTools(pi, "verify");
 			persist(active);
 			recordStatus(ctx);
-			await steer(ctx, phasePrompt(active, "verify"));
+			await steer(pi, phasePrompt(active, "verify"));
 			return;
 		}
 
@@ -740,16 +738,51 @@ function setupHooks(pi: ExtensionAPI): void {
 			applyPhaseTools(pi, "build");
 			persist(active);
 			recordStatus(ctx);
-			await steer(ctx, phasePrompt(active, "build"));
+			await steer(pi, phasePrompt(active, "build"));
 			return;
 		}
-		if (phase === "build" && signals.build.test(text)) {
+		if (phase === "build") {
+			// RED guard: a failing test run is NOT completion — loop back to fix it.
+			const isRed =
+				/\bRED\b|tests? (fail|failing|red)\b|exit(?:\s*code)?\s*[:=]?\s*[^0]\d*\b/i.test(
+					text,
+				);
+			const isGreen = signals.build.test(text);
+			if (isRed && !isGreen) {
+				active.iteration++;
+				active.remediationHistory.push({
+					iteration: active.iteration,
+					reason: "BUILD reported RED — tests failing",
+					ts: new Date().toISOString(),
+				});
+				logEvent(active, `build_red iter=${active.iteration}`);
+				if (active.iteration >= active.maxIterations) {
+					ctx.ui.notify(
+						`Loop: CAP reached on BUILD RED (${active.maxIterations}). Halting.`,
+						"warning",
+					);
+					logEvent(active, "cap_reached_build");
+					active.phase = "done";
+					persist(active);
+					active = null;
+					recordStatus(ctx);
+					return;
+				}
+				persist(active);
+				recordStatus(ctx);
+				await steer(
+					pi,
+					`${phasePrompt(active, "build")}\n\nRemediation iteration ${active.iteration}: the previous BUILD run reported RED (tests failing). Do NOT claim done. Fix the failing test, re-run it, and paste the literal command + exit code + output. A failing test is never completion.`,
+				);
+				return;
+			}
+			if (!isGreen) return; // no signal yet — wait for the agent to finish
 			logEvent(active, "build_complete");
 			active.phase = "review";
 			applyPhaseTools(pi, "review"); // null = full toolset (reviewer needs subagent dispatch)
 			persist(active);
 			recordStatus(ctx);
-			await steer(ctx, phasePrompt(active, "review"));
+			await steer(pi, phasePrompt(active, "review"));
 			return;
 		}
 	});
