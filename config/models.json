@@ -506,6 +506,22 @@
           }
         },
         {
+          "id": "FW-Kimi-K2.7-Code",
+          "name": "Kimi K2.7 Code Fireworks (Grove)",
+          "reasoning": true,
+          "input": [
+            "text"
+          ],
+          "contextWindow": 262144,
+          "maxTokens": 32768,
+          "cost": {
+            "input": 0.7733,
+            "output": 3.256,
+            "cacheRead": 0.1302,
+            "cacheWrite": 0
+          }
+        },
+        {
           "id": "FW-DeepSeek-V4-Pro",
           "name": "DeepSeek V4 Pro Fireworks (Grove)",
           "reasoning": true,

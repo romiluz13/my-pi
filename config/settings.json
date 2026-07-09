@@ -6,9 +6,9 @@
     "--",
     "npm"
   ],
-  "lastChangelogVersion": "0.80.3",
+  "lastChangelogVersion": "0.80.5",
   "defaultProvider": "grove-openai",
-  "defaultModel": "FW-GLM-5.2",
+  "defaultModel": "FW-Kimi-K2.7-Code",
   "observational-memory": {
     "observeAfterTokens": 10000,
     "reflectAfterTokens": 20000,

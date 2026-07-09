@@ -109,9 +109,14 @@ for pkg in "${PACKAGES[@]}"; do
 	pi install "npm:$pkg" 2>&1 | tail -1
 done
 
-# Rebuild better-sqlite3 for pi-hermes-memory
+# Rebuild native modules whose install scripts are blocked by npm's allowScripts policy.
+# better-sqlite3 is required by pi-hermes-memory / pi-observational-memory.
 step "Rebuilding native modules"
-(cd "$PI_AGENT_DIR/npm" && npm rebuild better-sqlite3 2>&1 | tail -1) || warn "better-sqlite3 rebuild failed — may need manual fix"
+(
+  cd "$PI_AGENT_DIR/npm"
+  npm install-scripts approve better-sqlite3 2>&1 | tail -1
+  npm rebuild better-sqlite3 2>&1 | tail -1
+) || warn "better-sqlite3 rebuild failed — may need manual fix"
 info "Native modules rebuilt"
 
 # ── Web Search Config (pi-web-access) ───────────────────────────────────────
