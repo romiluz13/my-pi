@@ -1,3 +1,5 @@
+> **HISTORICAL** — this review found real issues, but most of the critical extension bugs (loop.ts `pi.sendUserMessage`, coach.ts `/coach test`, palette.ts `clear()`, guardrails.ts notification, scripts/install.sh gaps) were fixed in the live source shortly after. Kept for the decision trail. For the current state, run a fresh audit.
+
 # Deep Review — my-pi (8 fresh-context reviewers, 2026-07-09)
 
 Method: 8 fresh-context `reviewer` subagents, each owning one domain, validating
@@ -165,7 +167,7 @@ mechanism. The deployed files match `prompts/` (which has 9 files incl
 
 ### Coach + guardrails (3)
 
-8. **coach.ts: hardcoded `/palette` fallback always filtered out.** `buildCatalog`
+1. **coach.ts: hardcoded `/palette` fallback always filtered out.** `buildCatalog`
    filters `palette` out, so `isCommandSafe("/palette", valid)` is false → the
    "Browse all commands" escape hatch is dead code.
 2. **coach.ts: `{ role: "system" }` is not a valid `Message` type.** Works at
@@ -180,7 +182,7 @@ mechanism. The deployed files match `prompts/` (which has 9 files incl
 
 ### Skills (4)
 
-11. **brainstorming `server.cjs` still carries Superpowers branding + a
+1. **brainstorming `server.cjs` still carries Superpowers branding + a
     third-party telemetry endpoint** (`primeradiant.com` logo URL,
     `github.com/obra/superpowers`). README claims these were removed. A user
     opening the visual companion fetches the logo from primeradiant.com (IP +
@@ -196,7 +198,7 @@ mechanism. The deployed files match `prompts/` (which has 9 files incl
 
 ### Config + scripts (3)
 
-15. **settings.json has a duplicate `retry` key** (lines 12 and 102). jq/Python
+1. **settings.json has a duplicate `retry` key** (lines 12 and 102). jq/Python
     keep the last (the one with nested `provider`); the first is silently
     discarded. Delete the first block.
 2. **install.sh banner "15 packages, 60 skills"** contradicts its own PACKAGES
@@ -212,7 +214,7 @@ mechanism. The deployed files match `prompts/` (which has 9 files incl
 
 ### README + harmony (3)
 
-18. **README "56 skills" is wrong — actual unique count is 71.** (53 in
+1. **README "56 skills" is wrong — actual unique count is 71.** (53 in
     `~/.agents/skills` + ~10 unique in `~/.pi/agent/skills` + 8 package skills.)
 2. **extensions/README "12 installed npm packages" axis list is stale.** Lists
     removed `pi-hypa` (compression axis now unowned) and omits 4 active packages

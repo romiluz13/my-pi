@@ -2,18 +2,31 @@
 
 Skills are installed by `scripts/install.sh` from these sources:
 
-## Bundled (3 — adapted from Superpowers)
-- `brainstorming` — design before code, transitions to /to-spec + /to-tickets
-- `verification-before-completion` — evidence before claims
-- `receiving-code-review` — verify before implementing review feedback
+## Bundled (11 — repo-authored, 3 adapted from Superpowers)
 
-These are included in the repo (skills/ directory) and copied by the installer.
-Superpowers-specific references removed. Transitions point to Matt Pocock skills.
+Repo-original skills (local convention, workflow, and memory hygiene):
+
+- `brainstorming` — design before code, transitions to /to-spec + /to-tickets
+- `code-review` — two-axis (standards + spec) parallel review
+- `codebase-hygiene` — semantic duplicates and shallow-module detection
+- `diagnosing-bugs` — hard-bug diagnosis loop with tight feedback loops
+- `diff-driven-docs` — classify doc impact before writing
+- `grilling` — relentless plan interview
+- `memory-compounding` — prune/merge persistent memory
+- `receiving-code-review` — verify before implementing review feedback
+- `setup-maintenance` — monthly /setup-audit runner
+- `setup-matt-pocock-skills` — one-time repo scaffolding for Pocock skills
+- `verification-before-completion` — evidence before claims
+
+These are included in the repo (`skills/` directory) and copied by the installer.
+Superpowers-specific references were removed from the 3 adapted skills; all
+others are original to this repo. Transitions point to Matt Pocock skills where
+applicable.
 
 ## Installed from external sources
 
 | Source | Skills | Count |
-|--------|--------|-------|
+| -------- | -------- | ------- |
 | **Matt Pocock** (mattpocock/skills) | tdd, handoff, prototype, grill-with-docs, to-spec, to-tickets, triage, implement, code-review, research, wayfinder, wizard, codebase-design, domain-modeling, diagnosing-bugs, resolving-merge-conflicts, writing-great-skills, teach, improve-codebase-architecture | 19 |
 | **MongoDB** (mongodb/agent-skills) | mongodb-schema-design, mongodb-search-and-ai, mongodb-query-optimizer, mongodb-connection, mongodb-mcp-setup, mongodb-natural-language-querying, mongodb-atlas-stream-processing | 7 |
 | **Vercel** (vercel-labs/agent-skills + vercel-labs/agent-browser) | vercel-react-best-practices, vercel-composition-patterns, deploy-to-vercel, web-design-guidelines, agent-browser | 5 |
