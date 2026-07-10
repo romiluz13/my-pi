@@ -1,0 +1,12 @@
+{
+  "name": "@mariozechner/pi-tui",
+  "version": "0.80.3-shim",
+  "description": "Compatibility shim re-exporting the current Pi TUI library from @earendil-works/pi-tui.",
+  "type": "module",
+  "main": "index.ts",
+  "types": "index.ts",
+  "license": "MIT",
+  "peerDependencies": {
+    "@earendil-works/pi-tui": "*"
+  }
+}

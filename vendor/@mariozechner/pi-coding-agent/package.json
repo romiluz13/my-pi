@@ -1,0 +1,12 @@
+{
+  "name": "@mariozechner/pi-coding-agent",
+  "version": "0.80.5-shim",
+  "description": "Compatibility shim re-exporting the current Pi extension API from @earendil-works/pi-coding-agent.",
+  "type": "module",
+  "main": "index.ts",
+  "types": "index.ts",
+  "license": "MIT",
+  "peerDependencies": {
+    "@earendil-works/pi-coding-agent": "*"
+  }
+}
