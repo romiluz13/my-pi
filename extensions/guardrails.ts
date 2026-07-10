@@ -58,10 +58,32 @@ interface GuardrailsConfig {
 	warnIfMissing: boolean;
 }
 
-// Set by session_start and session_compact — the next before_agent_start does
-// a full inject (context was genuinely lost), then clears it. Every other turn
-// gets a 1-line reminder. Starts true so the first turn always gets the full block.
-let fullInjectNext = true;
+// Per-session state (previously module-level `let`s that leaked across
+// sessions and subagents). Keyed by sessionId so every session/subagent gets
+// its own independent guardrails state.
+const enabledBySession = new Map<string, boolean>();
+const fullInjectNextBySession = new Map<string, boolean>();
+
+function isEnabled(ctx: ExtensionContext, defaultValue: boolean): boolean {
+	const sessionId = ctx.sessionManager.getSessionId();
+	if (enabledBySession.has(sessionId)) return enabledBySession.get(sessionId)!;
+	return defaultValue;
+}
+
+function setEnabled(ctx: ExtensionContext, value: boolean): void {
+	enabledBySession.set(ctx.sessionManager.getSessionId(), value);
+}
+
+function shouldFullInject(ctx: ExtensionContext): boolean {
+	const sessionId = ctx.sessionManager.getSessionId();
+	if (fullInjectNextBySession.has(sessionId))
+		return fullInjectNextBySession.get(sessionId)!;
+	return true;
+}
+
+function setFullInject(ctx: ExtensionContext, value: boolean): void {
+	fullInjectNextBySession.set(ctx.sessionManager.getSessionId(), value);
+}
 
 const DEFAULT_CONFIG: GuardrailsConfig = {
 	enabled: true,
@@ -131,8 +153,8 @@ export default function guardrailsExtension(pi: ExtensionAPI): void {
 
 	// Full inject on session_start + post-compact; 1-line reminder otherwise.
 	pi.on("before_agent_start", async (event, ctx) => {
-		if (!cfg.enabled) return;
-		if (fullInjectNext) {
+		if (!isEnabled(ctx, cfg.enabled)) return;
+		if (shouldFullInject(ctx)) {
 			const agentsMd = findAgentsMd(event.systemPromptOptions?.contextFiles);
 			if (!agentsMd && cfg.warnIfMissing) {
 				ctx.ui.notify(
@@ -141,7 +163,7 @@ export default function guardrailsExtension(pi: ExtensionAPI): void {
 				);
 			}
 			// Only clear the flag when rules were actually found — retry next turn if not.
-			if (agentsMd) fullInjectNext = false;
+			if (agentsMd) setFullInject(ctx, false);
 			return { systemPrompt: event.systemPrompt + rulesBlock(agentsMd, cfg) };
 		}
 		// Reminder-only turn: keep the rules present without saturating reasoning.
@@ -150,8 +172,8 @@ export default function guardrailsExtension(pi: ExtensionAPI): void {
 
 	// After compaction, flag the next turn for a full re-inject + audit survival.
 	pi.on("session_compact", async (_event, ctx) => {
-		if (!cfg.enabled) return;
-		fullInjectNext = true;
+		if (!isEnabled(ctx, cfg.enabled)) return;
+		setFullInject(ctx, true);
 		const sp = ctx.getSystemPrompt();
 		if (!/HARD RULES/.test(sp)) {
 			ctx.ui.notify(
@@ -163,8 +185,8 @@ export default function guardrailsExtension(pi: ExtensionAPI): void {
 
 	// Session start: flag the first turn for a full inject + load status.
 	pi.on("session_start", async (_event, ctx) => {
-		if (!cfg.enabled) return;
-		fullInjectNext = true;
+		if (!isEnabled(ctx, cfg.enabled)) return;
+		setFullInject(ctx, true);
 		ctx.ui.setStatus("guardrails", ctx.ui.theme.fg("dim", "⚡ rules"));
 	});
 
@@ -175,13 +197,13 @@ export default function guardrailsExtension(pi: ExtensionAPI): void {
 		handler: async (args, ctx) => {
 			const sub = (args ?? "").trim().toLowerCase();
 			if (sub === "off") {
-				cfg.enabled = false;
+				setEnabled(ctx, false);
 				ctx.ui.setStatus("guardrails", undefined);
 				ctx.ui.notify("guardrails: re-injection OFF", "info");
 				return;
 			}
 			if (sub === "on") {
-				cfg.enabled = true;
+				setEnabled(ctx, true);
 				ctx.ui.setStatus("guardrails", ctx.ui.theme.fg("dim", "⚡ rules"));
 				ctx.ui.notify("guardrails: re-injection ON", "info");
 				return;
@@ -192,14 +214,14 @@ export default function guardrailsExtension(pi: ExtensionAPI): void {
 				const agentsMd = findAgentsMd(opts?.contextFiles);
 				ctx.ui.notify(
 					agentsMd
-						? `guardrails: AGENTS.md found at ${agentsMd.path} (${agentsMd.content.length} chars); would inject ${truncate(agentsMd.content, cfg.maxChars).length} chars. enabled=${cfg.enabled}`
-						: `guardrails: AGENTS.md NOT in contextFiles. enabled=${cfg.enabled}`,
+						? `guardrails: AGENTS.md found at ${agentsMd.path} (${agentsMd.content.length} chars); would inject ${truncate(agentsMd.content, cfg.maxChars).length} chars. enabled=${isEnabled(ctx, cfg.enabled)}`
+						: `guardrails: AGENTS.md NOT in contextFiles. enabled=${isEnabled(ctx, cfg.enabled)}`,
 					agentsMd ? "info" : "warning",
 				);
 				return;
 			}
 			ctx.ui.notify(
-				`guardrails: re-injection ${cfg.enabled ? "ON" : "OFF"}. Usage: /guardrails on|off|test`,
+				`guardrails: re-injection ${isEnabled(ctx, cfg.enabled) ? "ON" : "OFF"}. Usage: /guardrails on|off|test`,
 				"info",
 			);
 		},

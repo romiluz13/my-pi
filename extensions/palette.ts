@@ -212,7 +212,7 @@ function openPalette(pi: ExtensionAPI, ctx: ExtensionContext): void {
 					// Printable character: append to filter.
 					if (data.length === 1) {
 						const code = data.charCodeAt(0);
-						if (code >= 0x20 && data !== " ") {
+						if (code >= 0x20 && code !== 0x7f && data !== " ") {
 							filter += data;
 							refilter();
 							refresh();

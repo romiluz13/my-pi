@@ -47,7 +47,20 @@ import type {
 
 // ─── Config ─────────────────────────────────────────────────────────────────
 
-let enabled = true;
+// Per-session toggle (previously a module-level `let` that leaked across
+// sessions and subagents). Keyed by sessionId so every session/subagent gets
+// its own independent Coach state.
+const enabledBySession = new Map<string, boolean>();
+
+function isCoachEnabled(ctx: ExtensionContext): boolean {
+	const sessionId = ctx.sessionManager.getSessionId();
+	if (enabledBySession.has(sessionId)) return enabledBySession.get(sessionId)!;
+	return true;
+}
+
+function setCoachEnabled(ctx: ExtensionContext, value: boolean): void {
+	enabledBySession.set(ctx.sessionManager.getSessionId(), value);
+}
 
 const DEFAULT_COACH_MODEL = "grove-openai/deepseek-v4-flash";
 const LLM_TIMEOUT_MS = 5000;
@@ -243,7 +256,7 @@ function hintFromSkills(skillHints: string[]): string | null {
 
 export default function coachExtension(pi: ExtensionAPI): void {
 	pi.on("input", async (event, ctx) => {
-		if (!enabled) return { action: "continue" };
+		if (!isCoachEnabled(ctx)) return { action: "continue" };
 
 		// Never touch agent-injected messages (loop steering, hermes, etc.).
 		if (event.source === "extension") return { action: "continue" };
@@ -355,13 +368,13 @@ export default function coachExtension(pi: ExtensionAPI): void {
 		handler: async (args, ctx) => {
 			const sub = (args ?? "").trim().toLowerCase();
 			if (sub === "off") {
-				enabled = false;
+				setCoachEnabled(ctx, false);
 				ctx.ui.setStatus("coach", undefined);
 				ctx.ui.notify("Coach OFF — you'll type commands yourself.", "info");
 				return;
 			}
 			if (sub === "on") {
-				enabled = true;
+				setCoachEnabled(ctx, true);
 				ctx.ui.setStatus("coach", ctx.ui.theme.fg("dim", "🧭 coach"));
 				ctx.ui.notify(
 					"Coach ON — type a task and I'll suggest the workflow.",
@@ -402,14 +415,14 @@ export default function coachExtension(pi: ExtensionAPI): void {
 				return;
 			}
 			ctx.ui.notify(
-				`Coach is ${enabled ? "ON" : "OFF"}. Type a task in plain English — I'll suggest the workflow. (prefix '!' = raw, '/coach off|on|test')`,
+				`Coach is ${isCoachEnabled(ctx) ? "ON" : "OFF"}. Type a task in plain English — I'll suggest the workflow. (prefix '!' = raw, '/coach off|on|test')`,
 				"info",
 			);
 		},
 	});
 
 	pi.on("session_start", async (_event, ctx) => {
-		if (enabled) {
+		if (isCoachEnabled(ctx)) {
 			ctx.ui.setStatus("coach", ctx.ui.theme.fg("dim", "🧭 coach"));
 			// One-time gentle reminder of the interface (not every turn — just once).
 			ctx.ui.notify(

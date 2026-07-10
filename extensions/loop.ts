@@ -146,6 +146,9 @@ interface LoopState {
 
 let active: LoopState | null = null;
 let phaseToolSnapshot: string[] | null = null; // tools before first phase restriction
+let branchHadToolCall = false; // tracks whether the current assistant branch used any tool
+let expectingAgentResponse = false; // true only when we just steered the agent (guards against manual user replies hijacking the loop)
+let pausedForHuman = false; // true when the loop paused for an open decision; next user input resumes it
 
 // ─── Persistence ────────────────────────────────────────────────────────────
 
@@ -242,6 +245,7 @@ function restoreTools(pi: ExtensionAPI): void {
 
 async function steer(pi: ExtensionAPI, message: string): Promise<void> {
 	// sendUserMessage is on ExtensionAPI (pi), NOT on ExtensionContext (ctx).
+	expectingAgentResponse = true;
 	await pi.sendUserMessage(message, { deliverAs: "steer" });
 }
 
@@ -525,6 +529,7 @@ function lastAssistantText(ctx: ExtensionContext): string {
 function setupHooks(pi: ExtensionAPI): void {
 	// Phase tool gate — block tools outside the current phase allowlist.
 	pi.on("tool_call", async (event) => {
+		if (active) branchHadToolCall = true;
 		if (!active) return;
 		const allow = PHASE_TOOLS[active.phase];
 		if (allow === null) return; // no restriction
@@ -537,10 +542,45 @@ function setupHooks(pi: ExtensionAPI): void {
 		}
 	});
 
+	// If the loop paused for a human decision, the next user input resumes it.
+	pi.on("input", async () => {
+		if (active && pausedForHuman) {
+			pausedForHuman = false;
+			expectingAgentResponse = true;
+		}
+	});
+
 	// Loop progression — on each agent_end, inspect the latest message and
 	// advance the state machine. This is where the loop logic lives.
 	pi.on("agent_end", async (_event, ctx) => {
 		if (!active) return;
+
+		// Guard: only act on turns we explicitly steered (or a resumed pause).
+		// This prevents a manual user reply during an active loop from being
+		// misread as a phase-completion signal.
+		if (!expectingAgentResponse) return;
+		expectingAgentResponse = false;
+
+		// Wedge detection: after the contract is accepted, every productive turn
+		// should invoke at least one tool. A turn with no tool calls means the
+		// loop is stalled (model is rambling, refusing, or lost).
+		if (active.intent && !branchHadToolCall && !active.wedgeDetected) {
+			active.wedgeDetected = true;
+			logEvent(active, "wedge_detected");
+			persist(active);
+			ctx.ui.notify(
+				"Loop: WEDGE detected — no tool calls in this turn. Halting — surface to human.",
+				"warning",
+			);
+			active.phase = "done";
+			persist(active);
+			restoreTools(pi);
+			active = null;
+			recordStatus(ctx);
+			return;
+		}
+		branchHadToolCall = false;
+
 		const text = lastAssistantText(ctx);
 
 		// Pre-flight contract gate.
@@ -574,6 +614,7 @@ function setupHooks(pi: ExtensionAPI): void {
 				if (rejection.startsWith("PAUSE")) {
 					ctx.ui.notify(rejection, "warning");
 					logEvent(active, "paused_open_decisions");
+					pausedForHuman = true;
 					persist(active);
 					return; // wait for human
 				}

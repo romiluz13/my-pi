@@ -75,9 +75,12 @@ function extractPaths(text: string): string[] {
 	while ((m = re.exec(text)) !== null) {
 		const prefix = m[2] ?? "";
 		const path = prefix + m[3];
-		// Filter out obvious URLs and noise.
+		// Filter out obvious URLs and noise. Also exclude bare word/word
+		// fragments (e.g. "and/or", "this/that") when there is no directory
+		// prefix and no file extension anywhere in the path.
 		if (path.includes("://")) continue;
 		if (path.length > 200) continue;
+		if (!prefix && !path.includes(".")) continue;
 		paths.add(path);
 	}
 	return [...paths];

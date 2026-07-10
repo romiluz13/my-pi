@@ -123,11 +123,13 @@ remember /loop, /feature, /research — Coach tells you which fits THIS task.
 ## Harmony guardrails (for any future extension added here)
 
 1. **One moving part per axis.** Each capability axis already has an owner
-   among the 12 installed npm packages (see `~/.pi/agent/npm/package.json`):
-   memory=hermes, search=hermes, compaction=observational, rewind=pi-rewind,
-   statusline=pi-statusline, feedback=pi-lens, subagents=pi-subagents,
-   messaging=pi-intercom, web=pi-web-access, compression=pi-hypa,
-   questions=rpiv-ask-user-question, side-convo=pi-btw. A new extension must
+   among the 14 installed npm packages (see `~/.pi/agent/npm/package.json`):
+   memory=hermes, search=hermes, context-sidecar=pi-context,
+   compaction=observational, rewind=pi-rewind, statusline=pi-statusline,
+   feedback=pi-lens, subagents=pi-subagents, messaging=pi-intercom,
+   web=pi-web-access, observability=pi-observability,
+   questions=rpiv-ask-user-question, side-convo=pi-btw,
+   destructive-guard=pi-confirm-destructive. A new extension must
    declare which axis it owns and touch no other.
 2. **Extensions over packages for glue.** Local orchestration/doc/mode glue
    belongs here as `.ts` reading from existing stores — never a re-implementation
@@ -145,7 +147,7 @@ remember /loop, /feature, /research — Coach tells you which fits THIS task.
 ### `pi-mcp-adapter` (npm, v2.11.0) — VERIFIED SAFE, ready to install
 
 MCP protocol bridge — the one axis no installed package owns. Conflict-checked
-against all 12 installed packages:
+against all 14 installed packages:
 
 - Tools registered: `mcp`, `pi-mcp-probe` — no collision with any installed
   package or built-in.
