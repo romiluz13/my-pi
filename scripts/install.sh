@@ -109,13 +109,32 @@ for pkg in "${PACKAGES[@]}"; do
 	pi install "npm:$pkg" 2>&1 | tail -1
 done
 
+# ── Legacy namespace shims (pi-intercom, pi-rewind) ─────────────────────────
+step "Installing legacy namespace shims for pi-intercom and pi-rewind"
+
+# These two packages were published against the old @mariozechner namespace
+# before Pi moved to @earendil-works. They still work, but only if the old
+# import names resolve. We provide thin shims that re-export the current API.
+LEGACY_SHIM_DIR="$SCRIPT_DIR/vendor/@mariozechner"
+TARGET_DIR="$PI_AGENT_DIR/npm/node_modules/@mariozechner"
+
+mkdir -p "$TARGET_DIR"
+for shim in pi-coding-agent pi-tui; do
+	if [ -d "$LEGACY_SHIM_DIR/$shim" ]; then
+		rm -rf "$TARGET_DIR/$shim"
+		ln -sf "$LEGACY_SHIM_DIR/$shim" "$TARGET_DIR/$shim"
+		echo "  linked @mariozechner/$shim shim"
+	fi
+done
+info "Legacy namespace shims installed"
+
 # Rebuild native modules whose install scripts are blocked by npm's allowScripts policy.
 # better-sqlite3 is required by pi-hermes-memory / pi-observational-memory.
 step "Rebuilding native modules"
 (
-  cd "$PI_AGENT_DIR/npm"
-  npm install-scripts approve better-sqlite3 2>&1 | tail -1
-  npm rebuild better-sqlite3 2>&1 | tail -1
+	cd "$PI_AGENT_DIR/npm"
+	npm install-scripts approve better-sqlite3 2>&1 | tail -1
+	npm rebuild better-sqlite3 2>&1 | tail -1
 ) || warn "better-sqlite3 rebuild failed — may need manual fix"
 info "Native modules rebuilt"
 
