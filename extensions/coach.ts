@@ -54,7 +54,9 @@ function loadCoachModel(): string {
 	const path = join(homedir(), ".pi", "agent", "coach.json");
 	if (!existsSync(path)) return DEFAULT_COACH_MODEL;
 	try {
-		const raw = JSON.parse(readFileSync(path, "utf-8")) as { coachModel?: string };
+		const raw = JSON.parse(readFileSync(path, "utf-8")) as {
+			coachModel?: string;
+		};
 		return typeof raw.coachModel === "string" && raw.coachModel.trim()
 			? raw.coachModel.trim()
 			: DEFAULT_COACH_MODEL;
@@ -155,19 +157,24 @@ const WORKFLOW_OPTIONS: WorkflowOption[] = [
 		description: "Implement + test. Pins the tdd skill mechanically.",
 	},
 	{
-		label: "/feature — Fast chain: plan → build → review → ship (no human gates)",
+		label:
+			"/feature — Fast chain: plan → build → review → ship (no human gates)",
 		command: '/feature "$TASK"',
-		description: "End-to-end feature. Runs all phases back-to-back. No pause for approval.",
+		description:
+			"End-to-end feature. Runs all phases back-to-back. No pause for approval.",
 	},
 	{
-		label: "/loop — Bounded loop with phase gates + human approval (hard tasks)",
+		label:
+			"/loop — Bounded loop with phase gates + human approval (hard tasks)",
 		command: '/loop "$TASK"',
-		description: "Contract gate → plan → build → review → verify → ship. Pauses for human input. Tool restrictions per phase.",
+		description:
+			"Contract gate → plan → build → review → verify → ship. Pauses for human input. Tool restrictions per phase.",
 	},
 	{
 		label: "/debug — Debug an issue (feedback loop, root cause)",
 		command: '/debug "$TASK"',
-		description: "Build a repro loop, find root cause, fix. Pins diagnosing-bugs.",
+		description:
+			"Build a repro loop, find root cause, fix. Pins diagnosing-bugs.",
 	},
 	{
 		label: "/fix — Fast chain: debug → build → review → ship (for bugs)",
@@ -177,7 +184,8 @@ const WORKFLOW_OPTIONS: WorkflowOption[] = [
 	{
 		label: "/plan — Plan only (no code, design + spec + tickets)",
 		command: '/plan "$TASK"',
-		description: "Understand, brainstorm, write spec + tickets. Pins brainstorming.",
+		description:
+			"Understand, brainstorm, write spec + tickets. Pins brainstorming.",
 	},
 	{
 		label: "/research — Research a topic (parallel fan-out)",
@@ -202,7 +210,8 @@ const WORKFLOW_OPTIONS: WorkflowOption[] = [
 ];
 
 // Conversational responses (yes/no/ok) → skip the popup.
-const CONVERSATIONAL = /^(yes|no|ok|okay|sure|done|go|continue|proceed|do it|go ahead|that's fine|looks good|lgtm|yep|nope|correct|right|exactly|true|false|1|2|3|skip|next|stop|abort|cancel|\d+)\b/i;
+const CONVERSATIONAL =
+	/^(yes|no|ok|okay|sure|done|go|continue|proceed|do it|go ahead|that's fine|looks good|lgtm|yep|nope|correct|right|exactly|true|false|1|2|3|skip|next|stop|abort|cancel|\d+)\b/i;
 
 // ─── The input interceptor ──────────────────────────────────────────────────
 
@@ -250,7 +259,8 @@ export default function coachExtension(pi: ExtensionAPI): void {
 
 		if (choice === undefined) {
 			// Esc / cancel = just do it (still inject skill hints).
-			if (skillHint) return { action: "transform", text: `${skillHint}\n${text}` };
+			if (skillHint)
+				return { action: "transform", text: `${skillHint}\n${text}` };
 			return { action: "continue" };
 		}
 
@@ -258,7 +268,8 @@ export default function coachExtension(pi: ExtensionAPI): void {
 
 		if (!picked || picked.command === null) {
 			// "Just do it" — inject hints, pass original text.
-			if (skillHint) return { action: "transform", text: `${skillHint}\n${text}` };
+			if (skillHint)
+				return { action: "transform", text: `${skillHint}\n${text}` };
 			return { action: "continue" };
 		}
 
@@ -276,7 +287,8 @@ export default function coachExtension(pi: ExtensionAPI): void {
 
 	// /coach command — toggle + status.
 	pi.registerCommand("coach", {
-		description: "Toggle Coach on/off (the fixed workflow menu for plain-English tasks)",
+		description:
+			"Toggle Coach on/off (the fixed workflow menu for plain-English tasks)",
 		handler: async (args, ctx) => {
 			const sub = (args ?? "").trim().toLowerCase();
 			if (sub === "off") {
