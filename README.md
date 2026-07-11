@@ -66,7 +66,7 @@ sidecar, observability, statusline, structured questions, prompt-template
 engine, side conversations. Full list with the axis each owns in
 [`config/settings.json`](config/settings.json).
 
-**5 custom extensions** — harmony-preserving glue, each owns one axis:
+**6 custom extensions** — harmony-preserving glue, each owns one axis:
 
 | Extension | What it does |
 | ----------- | -------------- |
@@ -75,10 +75,13 @@ engine, side conversations. Full list with the axis each owns in
 | `guardrails.ts` | Keeps AGENTS.md in the system prompt: reminder every turn, full rules on start + after compaction. Defeats mid-session forgetting by construction. |
 | `palette.ts` | Fuzzy command palette over every slash command (`Ctrl+Shift+K`). Zero drift — discovers dynamically. |
 | `handoff.ts` | Deterministic `HANDOFF.md` generation. No LLM call, no compaction — just the session ledger, rendered. |
+| `trace.ts` | Activation observability. Logs what skills/tools the workflow actually activates at each turn. `/trace-skills` shows available vs activated — the orphan detector. |
 
 **9 slash commands** — the user-facing surface, all Coach-routable:
 
 `/build` `/debug` `/feature` `/fix` `/plan` `/research` `/review` `/ship` `/setup-audit`
+
+Plus `/trace` and `/trace-skills` for activation observability.
 
 `/feature` chains `plan → build → review → ship`. `/fix` chains
 `debug → build → review → ship`. The rest are single-phase.
@@ -89,8 +92,10 @@ engine, side conversations. Full list with the axis each owns in
 `diff-driven-docs` · `grilling` · `memory-compounding` · `receiving-code-review` ·
 `setup-maintenance` · `setup-matt-pocock-skills` · `verification-before-completion`
 
-Plus **50+ community skills** auto-fetched (Bright Data, Octocode, MongoDB,
-Vercel, agent-browser, Matt Pocock's engineering suite) — discovered live by the
+Plus **53 community skills** provisioned by `scripts/install.sh` — Matt Pocock's
+engineering suite (19), MongoDB (7), Vercel (5), Bright Data (8), Octocode (5),
+Python/OSS (3), UX skills (3) — plus package-shipped skills from pi-lens,
+pi-subagents, pi-hermes-memory, and pi-web-access. Discovered live by the
 harness, invoked by the workflow, never by memorization.
 
 **One 131-line rule file** — `config/agents.md`, the single source of truth
@@ -119,13 +124,14 @@ cd auto-pi
 ```
 
 The installer wires the rule file across all three agents, installs the 14
-packages, deploys the 5 extensions + 9 commands + 11 skills, and configures
-web search. One command. Reload Pi (`/reload`) and type a task.
+packages, deploys the 6 extensions + 9 commands + 11 repo skills, deploys model
+definitions, and configures web search. One command. Reload Pi (`/reload`) and
+type a task.
 
 **Prerequisites:** Pi (`curl -fsSL https://pi.dev/install.sh | sh`), Node 20+,
-npm, git. `gh` optional.
+npm, git, [mise](https://mise.jdx.dev/) (for `mise exec node@24 -- npm`). `gh` optional.
 
-**Update everything** (packages + community skills): `./scripts/update.sh`
+**Update packages + community skills:** `./scripts/update.sh`
 
 ## Use it
 
@@ -159,7 +165,7 @@ Prefix `!` for raw mode (no Coach). Prefix `/` to run a command directly.
 config/agents.md        the rule file (131 lines, shared across 3 agents)
 config/settings.json    14 packages, compaction, retry, memory, subagents
 config/models.json      provider + model definitions
-extensions/             5 custom TypeScript extensions (coach, loop, guardrails, palette, handoff)
+extensions/             6 custom TypeScript extensions (coach, loop, guardrails, palette, handoff, trace)
 prompts/                9 slash commands (the user interface)
 skills/                 11 hand-tuned skills
 scripts/install.sh      one-command setup

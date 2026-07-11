@@ -21,11 +21,14 @@
  *   pi-prompt-template-model (run-prompt guidance), and pi-rewind (snapshot
  *   side-effect) — all APPEND-ONLY. This handler is append-only too. Pi chains
  *   before_agent_start returns across handlers, so all four compose without
- *   clobbering. Loads AFTER the npm packages (extensions/ dir runs after
- *   packages), so event.systemPrompt already includes hermes + ptm additions.
- * - session_compact is already used by pi-hermes-memory (flush) and
- *   pi-observational-memory (compaction summary). This handler only READS
- *   ctx.getSystemPrompt() and notifies — returns nothing, touches no storage.
+ *   clobbering. Loads BEFORE the npm packages (global extensions/ dir loads
+ *   before packages per loader.js:516-535), so event.systemPrompt does NOT
+ *   yet include hermes + ptm additions — those are appended by later
+ *   before_agent_start handlers from packages.
+ * - session_compact is used by this handler. pi-hermes-memory and
+ *   pi-observational-memory hook session_before_compact (NOT session_compact).
+ *   This handler only READS ctx.getSystemPrompt() and notifies — returns
+ *   nothing, touches no storage.
  *
  * What this is NOT (honest scope):
  * This is the PROMINENCE tier (~90-95% reliable per IFScale research). It is

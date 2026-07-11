@@ -5,6 +5,8 @@ argument-hint: "[focus: versions|harmony|coach|disk|all]"
 
 Run a full health audit of this Pi setup. Fan out parallel read-only subagents — one per audit axis — then synthesize into a report with recommended actions. This is read-only: do NOT change anything, just report.
 
+> **Note:** This prompt writes its report to disk (`~/Dev/my-pi/docs/audits/`) — it is an intentional deliverable, not a read-only audit. This prompt implements the `setup-maintenance` skill procedure.
+
 Setup location: `~/.pi/agent/` (extensions, settings.json, models.json), `~/.agents/skills/`, `~/Dev/my-pi/` (the published repo). The live config is NOT a git repo — never push from here; the repo at ~/Dev/my-pi is the source of truth for publishing.
 
 ## Axes — dispatch one subagent per axis (parallel, read-only)
@@ -20,7 +22,7 @@ Check installed vs latest-published for Pi core + all npm packages in `~/.pi/age
 
 ### 2. Harmony re-audit (conflicts)
 
-Scan all 15 packages + 5 custom extensions for collisions on: registered tools, registered commands, event hooks (same event → does ordering matter?), storage paths (SQLite DBs, file dirs).
+Scan all 14 packages + 6 custom extensions for collisions on: registered tools, registered commands, event hooks (same event → does ordering matter?), storage paths (SQLite DBs, file dirs).
 
 - Read each package's main extension file + each `~/.pi/agent/extensions/*.ts`.
 - Flag: tool name collisions, command name collisions, hook ordering risks, storage path overlaps.
@@ -31,7 +33,7 @@ Scan all 15 packages + 5 custom extensions for collisions on: registered tools, 
 List EVERY available command + skill. Check which ones Coach (`~/.pi/agent/extensions/coach.ts`) never routes to.
 
 - Enumerate: prompt templates (`~/.pi/agent/prompts/*.md`), extension commands (registerCommand in `~/.pi/agent/extensions/*.ts`), package commands, user-invocable skills (disable-model-invocation: true), auto-skills.
-- For each, grep coach.ts classify() + suggestionsFor() — does any intent route to it?
+- For each, grep coach.ts `classifyWithLLM()` — does any intent route to it? (Note: there is no `suggestionsFor()` function; suggestions are built inline in the `input` handler.)
 - Flag the gaps: commands/skills Coach never surfaces. These are leverage the setup has but Coach doesn't activate.
 - Report: coverage table (command/skill → which Coach intent routes to it, or GAP).
 

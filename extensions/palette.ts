@@ -11,7 +11,8 @@
  *
  * Harmony contract:
  * - Reads the command surface from Pi itself (single source of truth).
- * - Owns NO axis: registers no tools, hooks no events, writes no storage.
+ * - Owns NO axis: registers no tools, writes no storage. DOES hook
+ *   `session_start` (status indicator only — additive, no conflict).
  * - Reserves only Ctrl+Shift+K (chosen to avoid the built-in
  *   app.model.cycleBackward = shift+ctrl+p, which `matchesKey` normalizes to
  *   the same input as ctrl+shift+p). pi-rewind (Esc+Esc) and pi-btw (/btw)

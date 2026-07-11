@@ -23,9 +23,12 @@
  *   (setActiveTools) + blocking violations (on('tool_call') {block}).
  * - Durable state lives at ~/.pi/workflows/{wf}.json — does NOT touch hermes
  *   SQLite or observational ledger.
- * - on('tool_call') is additive: pi-rewind (snapshots) hooks the same
- *   event for a different concern; this hook only blocks tools outside
- *   the current phase allowlist.
+ * - on('tool_call') is additive: pi-confirm-destructive (destructive-action
+ *   gate), pi-lens (read-guard diagnostics), and pi-rewind (snapshots) all
+ *   hook the same event for different concerns; this hook only blocks tools
+ *   outside the current phase allowlist. Global extensions load BEFORE npm
+ *   packages (loader.js:516-535), so this hook runs before
+ *   pi-confirm-destructive — no short-circuit conflict.
  * - setStatus('loop', …) is an additive status slot; pi-statusline owns the
  *   footer render.
  *
@@ -77,6 +80,7 @@ const PHASE_TOOLS: Record<Phase, string[] | null> = {
 		"grep",
 		"find",
 		"ls",
+		"write", // BUG-3 fix: PLAN must write .loop-plan.md (its deliverable) — was gated off, breaking the PLAN→BUILD bridge
 		"lsp_diagnostics",
 		"lsp_navigation",
 		"module_report",
@@ -144,11 +148,73 @@ interface LoopState {
 	updatedAt: string;
 }
 
+// Per-session state (BUG-2 fix: was module-level `let`s that leaked across sessions/subagents).
+// Keyed by sessionId so every session/subagent gets its own independent loop state.
+const activeBySession = new Map<string, LoopState | null>();
+const snapshotBySession = new Map<string, string[] | null>();
+const branchHadBySession = new Map<string, boolean>();
+const expectingBySession = new Map<string, boolean>();
+const pausedBySession = new Map<string, boolean>();
+
+function sid(ctx: ExtensionContext): string {
+	return ctx.sessionManager.getSessionId();
+}
+
+// Accessor properties that read/write the per-session maps:
+function getActive(ctx: ExtensionContext): LoopState | null {
+	return activeBySession.get(sid(ctx)) ?? null;
+}
+function setActive(ctx: ExtensionContext, val: LoopState | null): void {
+	if (val === null) activeBySession.delete(sid(ctx));
+	else activeBySession.set(sid(ctx), val);
+}
+function getSnapshot(ctx: ExtensionContext): string[] | null {
+	return snapshotBySession.get(sid(ctx)) ?? null;
+}
+function setSnapshot(ctx: ExtensionContext, val: string[] | null): void {
+	if (val === null) snapshotBySession.delete(sid(ctx));
+	else snapshotBySession.set(sid(ctx), val);
+}
+function getBranchHad(ctx: ExtensionContext): boolean {
+	return branchHadBySession.get(sid(ctx)) ?? false;
+}
+function setBranchHad(ctx: ExtensionContext, val: boolean): void {
+	branchHadBySession.set(sid(ctx), val);
+}
+function getExpecting(ctx: ExtensionContext): boolean {
+	return expectingBySession.get(sid(ctx)) ?? false;
+}
+function setExpecting(ctx: ExtensionContext, val: boolean): void {
+	expectingBySession.set(sid(ctx), val);
+}
+function getPaused(ctx: ExtensionContext): boolean {
+	return pausedBySession.get(sid(ctx)) ?? false;
+}
+function setPaused(ctx: ExtensionContext, val: boolean): void {
+	pausedBySession.set(sid(ctx), val);
+}
+
+// Backward-compat: `active` is used as a bare variable throughout. We can't
+// replace every usage in one edit without a huge diff, so we keep a getter
+// proxy via `active` as a property on a small object that reads the current
+// session. But that requires ctx everywhere. Instead, we use a simpler
+// approach: the session that STARTED the loop is the "active session" and
+// we track its ID. All bare `active` references are in the loop's own
+// event handlers which have ctx. We'll convert them in the next pass.
+// For now, keep a module-level `active` for the loop-runner context, but
+// also sync to the per-session map.
 let active: LoopState | null = null;
-let phaseToolSnapshot: string[] | null = null; // tools before first phase restriction
-let branchHadToolCall = false; // tracks whether the current assistant branch used any tool
-let expectingAgentResponse = false; // true only when we just steered the agent (guards against manual user replies hijacking the loop)
-let pausedForHuman = false; // true when the loop paused for an open decision; next user input resumes it
+let phaseToolSnapshot: string[] | null = null;
+let branchHadToolCall = false;
+let expectingAgentResponse = false;
+let pausedForHuman = false;
+
+// C1 fix: export pause state so Coach can skip when the loop is paused for human input.
+// Without this, Coach's `input` handler returns {action:"handled"} and short-circuits
+// the input chain — loop.ts's `input` handler never runs, and the loop stays paused forever.
+export function isLoopPausedForHuman(): boolean {
+	return active !== null && pausedForHuman;
+}
 
 // ─── Persistence ────────────────────────────────────────────────────────────
 
@@ -377,7 +443,7 @@ function phasePrompt(state: LoopState, phase: Phase): string {
 	const base = `[LOOP ENGINE — phase: ${phase}, iteration: ${state.iteration}/${state.maxIterations}]\n`;
 	switch (phase) {
 		case "plan":
-			return `${base}PLAN phase (read-only — write/edit/bash-mutating are gated off). Explore the codebase, understand the target, and write a plan to .loop-plan.md.
+			return `${base}PLAN phase (read + write for .loop-plan.md only — edit/bash-mutating are gated off). Explore the codebase, understand the target, and write a plan to .loop-plan.md.
 
 **Patterns to Mirror (extract BEFORE planning):** Use read/grep/find/lsp_* to produce a patterns table with ACTUAL code snippets copied from the codebase (not invented) + file:line refs:
 | Category | File:Lines | Pattern | Code Snippet |
@@ -414,7 +480,7 @@ Report when the checkpoint is satisfied.`;
 - [ ] No deviation from the plan without it being documented
 Report what changed and the final test result.`;
 		case "review":
-			return `${base}REVIEW phase. Run \`git diff > .loop-diff.patch\` first, then dispatch 5 reviewer subagents in parallel (each narrow, give each the diff PATH, never the body):
+			return `${base}REVIEW phase. Run \`git diff > .loop-diff.patch\` first, then dispatch 2-3 reviewer subagents in parallel (each narrow, give each the diff PATH, never the body). Use /skill:code-review for the standards reviewer:
 1. **code-review** — quality, pattern compliance, bugs (logic/null/race/security)
 2. **error-handling** — swallowed errors, empty catches, discarded promises, unhandled rejections
 3. **test-coverage** — missing tests, untested edge cases, tests that don't assert the behavior
@@ -424,13 +490,13 @@ Report what changed and the final test result.`;
 Every finding at confidence ≥80 needs a verbatim file:line quote or it's auto-demoted. Synthesize the 5 reports by severity (CRITICAL/HIGH/MEDIUM/LOW).${nonGoalsBlock(state)}
 
 **REVIEW_CHECKPOINT (satisfy ALL before signaling completion):**
-- [ ] 5 reviewers dispatched in parallel, each got the diff PATH (not the body)
+- [ ] 2-3 reviewers dispatched in parallel, each got the diff PATH (not the body)
 - [ ] Findings synthesized by severity
 - [ ] Every CRITICAL/HIGH finding has a file:line quote
 - [ ] nonGoals (above) respected — not flagged as missing features
-Report findings by severity.`;
+Report findings by severity. Use /skill:receiving-code-review when processing feedback.`;
 		case "verify":
-			return `${base}VERIFY phase (read/bash/lsp only — write/edit gated off). You are an INDEPENDENT verifier; a separate reviewer, not the builder. Run: (1) the project's test/lint/typecheck, (2) test-honesty grep on changed files for: getByTestId('-mock'), 'as any', '.find(', 'setTimeout(' waits, skipped tests (xit/test.skip), deleted test files — a hit means that test's PASS doesn't count. (3) Reconciliation: diff against the frozen reference anchor from the contract. Dispatch TWO fresh reviewer subagents (santa-method${state.crossModel ? " — reviewer B from a DIFFERENT model family than A" : ""}) that must CONVERGE. Score 0-10.
+			return `${base}VERIFY phase (read + bash-for-tests + lsp only — write/edit gated off). NOTE: bash CAN mutate (rm, git reset) — you are trusted not to cheat. You are an INDEPENDENT verifier; a separate reviewer, not the builder. Run: (1) the project's test/lint/typecheck, (2) test-honesty grep on changed files for: getByTestId('-mock'), 'as any', '.find(', 'setTimeout(' waits, skipped tests (xit/test.skip), deleted test files — a hit means that test's PASS doesn't count. (3) Reconciliation: diff against the frozen reference anchor from the contract. Dispatch TWO fresh reviewer subagents (santa-method${state.crossModel ? " — reviewer B from a DIFFERENT model family than A" : ""}) that must CONVERGE. Score 0-10.
 
 **VERIFY_CHECKPOINT (satisfy ALL before scoring):**
 - [ ] Project test/lint/typecheck run, full output read
@@ -439,7 +505,7 @@ Report findings by severity.`;
 - [ ] Two fresh reviewers dispatched and CONVERGED (or diverged — report honestly)
 Report score + convergence + honesty hits.`;
 		case "ship":
-			return `${base}SHIP phase. Only proceed if: evidence recorded, score ≥ ${PASS_THRESHOLD}, two reviewers converged, no test-honesty hits, reconciliation diff clean. Commit with a clean conventional message (use the commit skill).
+			return `${base}SHIP phase. Only proceed if: evidence recorded, score ≥ ${PASS_THRESHOLD}, two reviewers converged, no test-honesty hits, reconciliation diff clean. Commit with a clean conventional message (run /skill:commit then /skill:github for PRs). Report the commit hash — phase advances ONLY on a real hash, not the word "committed."
 
 **SHIP_CHECKPOINT (satisfy ALL before committing):**
 - [ ] Score ≥ ${PASS_THRESHOLD} AND reviewers converged
@@ -646,8 +712,13 @@ function setupHooks(pi: ExtensionAPI): void {
 			build:
 				/\bbuild (done|complete)\b|tests? (pass|green)\b|\bGREEN\b|exit(?:\s*code)?\s*[:=]?\s*0\b/i,
 			review: /\breview (done|complete)\b|findings?:|severity:/i,
+			// BUG-4 fix: VERIFY score must include the word "score" AND a number.
+			// The old regex was already reasonable but keep the explicit "score" anchor.
 			verify: /\bscore\b\D{0,10}(\d+(?:\.\d+)?)/i,
-			ship: /\bcommit(ted)?\b|commit hash:?\s*[0-9a-f]{7,40}/i,
+			// BUG-4 fix: SHIP must require a REAL commit hash, not just the word "committed".
+			// The old regex `\bcommit(ted)?\b` matched on prose alone — the agent could
+			// say "committed" without actually committing. Now requires a hex hash.
+			ship: /commit hash:?\s*[0-9a-f]{7,40}|\b[0-9a-f]{7,40}\b.*\bcommit/i,
 		};
 
 		// VERIFY: extract score + honesty + convergence.

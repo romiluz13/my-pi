@@ -104,9 +104,9 @@ retried turn). Plus `session_compact` audit + `/guardrails on|off|test`.
 
 Solves the adoption problem: "I can't remember all the commands."
 You type a task in plain English. Before the agent runs, Coach classifies it
-(build / debug / plan / research / review / ship / trivial) and shows a
-one-tap suggestion of the right workflow. You press Enter to accept — Coach
-transforms your input into the matching slash command. You never have to
+(build / debug / plan / research / review / ship / loop / feature / fix / trivial)
+and shows a one-tap suggestion of the right workflow. You press Enter to accept —
+Coach transforms your input into the matching slash command. You never have to
 remember /loop, /feature, /research — Coach tells you which fits THIS task.
 
 - **Trigger:** automatic — intercepts every user input via the `input` event.
@@ -115,10 +115,30 @@ remember /loop, /feature, /research — Coach tells you which fits THIS task.
   NO before_agent_start. The `input` event is NOT used by any installed
   package or other extension — it's a free axis. Skips `source:"extension"`
   messages so it never interferes with loop steering or hermes background work.
+  Skips when the loop is paused for human input (C1 fix: imports
+  `isLoopPausedForHuman` from loop.ts so it never swallows a pause-response).
   Trivial tasks pass through untouched (zero friction for the common case).
 - **Why this exists:** a system you don't use is worth zero. 8 slash commands +
   4 extension triggers is past the human instruction ceiling. Coach inverts
   the interface — the system surfaces the command, you don't recall it.
+
+### `trace.ts` — Activation observability (`/trace`, `/trace-skills`)
+
+The orphan-prevention mechanism. Logs what the workflow ACTUALLY activates at
+ every key moment: which skills are in the system prompt (available), which
+ skills the model actually reads (activated), which tools are called. Then
+ `/trace-skills` shows the gap — skills available but never activated are
+ orphans.
+
+- **Trigger:** automatic (hooks before_agent_start, tool_call, agent_end —
+  all READ-ONLY). `/trace` shows last N activations. `/trace-skills` shows the
+  orphan gap.
+- **Harmony contract:** owns NO axis, registers NO tools. Hooks are
+  observational (read-only). Writes one file: `~/.pi/agent/trace-YYYY-MM-DD.jsonl`
+  (append-only, auto-pruned to 7 days). Configurable via `~/.pi/agent/trace.json`.
+- **Why this exists:** catalog presence without forced activation is how you
+  build nothing. This extension makes orphans VISIBLE in real time, so you can
+  wire them or remove them without waiting for a yearly audit.
 
 ## Harmony guardrails (for any future extension added here)
 

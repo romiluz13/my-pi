@@ -3,7 +3,6 @@
 #
 # Usage:
 #   ./scripts/install.sh          # install everything
-#   ./scripts/install.sh --skip-cli  # skip bdata/octocode CLI install
 #
 set -euo pipefail
 
@@ -24,13 +23,9 @@ step() { echo -e "\n${BOLD}→ $*${RESET}"; }
 SCRIPT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 PI_AGENT_DIR="${HOME}/.pi/agent"
 AGENTS_SKILLS_DIR="${HOME}/.agents/skills"
-CLAUDE_SKILLS_DIR="${HOME}/.claude/skills"
-SKIP_CLI=false
-
-[[ "${1:-}" == "--skip-cli" ]] && SKIP_CLI=true
 
 echo -e "${BOLD}auto-pi installer${RESET}"
-echo -e "A Pi coding agent config where the workflow decides what to do — auto-pi — 14 packages, 5 custom extensions (coach + loop engine + guardrails), autonomous workflow.\n"
+echo -e "A Pi coding agent config where the workflow decides what to do — auto-pi — 14 packages, 6 custom extensions (coach + loop engine + guardrails + trace), autonomous workflow.\n"
 
 # ── Prerequisites ──────────────────────────────────────────────────────────
 
@@ -39,6 +34,7 @@ step "Checking prerequisites"
 command -v pi >/dev/null 2>&1 || error "Pi is not installed. Run: curl -fsSL https://pi.dev/install.sh | sh"
 command -v npm >/dev/null 2>&1 || error "npm is not installed. Install Node.js first."
 command -v git >/dev/null 2>&1 || error "git is not installed."
+command -v mise >/dev/null 2>&1 || warn "mise not found — settings.json requires mise exec node@24 -- npm"
 command -v gh >/dev/null 2>&1 || warn "gh CLI not found — GitHub features will be limited."
 
 info "Prerequisites OK"
@@ -79,6 +75,13 @@ else
 fi
 
 info "Pi settings configured"
+
+# ── Models ─────────────────────────────────────────────────────────────────
+
+step "Deploying model definitions"
+
+cp "$SCRIPT_DIR/config/models.json" "$PI_AGENT_DIR/models.json"
+info "Model definitions deployed (set $GROVE_API_KEY for Grove providers)"
 
 # ── Packages ───────────────────────────────────────────────────────────────
 
@@ -156,7 +159,7 @@ fi
 
 # ── Custom Extensions ─────────────────────────────────────────────────────
 
-step "Installing custom extensions (coach, loop, guardrails, palette, handoff)"
+step "Installing custom extensions (coach, loop, guardrails, palette, handoff, trace)"
 
 mkdir -p "$PI_AGENT_DIR/extensions"
 for ext in "$SCRIPT_DIR"/extensions/*.ts; do
@@ -167,7 +170,7 @@ for ext in "$SCRIPT_DIR"/extensions/*.ts; do
 done
 # Copy the extensions README (documentation, not code)
 [ -f "$SCRIPT_DIR/extensions/README.md" ] && cp "$SCRIPT_DIR/extensions/README.md" "$PI_AGENT_DIR/extensions/README.md"
-info "Custom extensions installed — /reload in Pi to activate (Ctrl+Shift+K for palette, /handoff for session handoff)"
+info "Custom extensions installed — /reload in Pi to activate (Ctrl+Shift+K for palette, /handoff for session handoff, /trace-skills for activation audit)"
 
 # ── AGENTS.md (single source of truth across Pi + Claude Code + Codex) ──────
 
@@ -209,7 +212,7 @@ info "Prompt templates installed ($(ls "$PI_AGENT_DIR/prompts"/*.md 2>/dev/null 
 
 step "Installing repo skills"
 
-mkdir -p "$AGENTS_SKILLS_DIR" "$CLAUDE_SKILLS_DIR"
+mkdir -p "$AGENTS_SKILLS_DIR"
 for skill_dir in "$SCRIPT_DIR"/skills/*/; do
 	[ -d "$skill_dir" ] || continue
 	name=$(basename "$skill_dir")
@@ -219,6 +222,114 @@ done
 # (Bright Data via update.sh, Octocode via `npx octocode skill`). The repo
 # skills live in ~/.agents/skills which all three agents read.
 info "Repo skills installed to ~/.agents/skills ($(ls -d "$AGENTS_SKILLS_DIR"/*/ 2>/dev/null | wc -l | tr -d ' ') directories)"
+
+# ── Community Skills ────────────────────────────────────────────────────────
+
+step "Provisioning community skills (Matt Pocock, MongoDB, Vercel, Bright Data, Octocode, Python/OSS, UX)"
+
+SOURCES_DIR="$HOME/.my-pi-sources"
+mkdir -p "$SOURCES_DIR"
+
+# Helper: clone if not present (idempotent)
+clone_if_missing() {
+	local url="$1"
+	local path="$2"
+	if [ ! -d "$path" ]; then
+		git clone --depth 1 "$url" "$path" 2>&1 | tail -1
+		echo "  cloned $path"
+	else
+		echo "  $path already exists — skipping"
+	fi
+}
+
+# Helper: symlink a skill dir into ~/.agents/skills/ (idempotent)
+symlink_skill() {
+	local src="$1"
+	local name="$2"
+	if [ -d "$src" ] && [ ! -e "$AGENTS_SKILLS_DIR/$name" ]; then
+		ln -sf "$src" "$AGENTS_SKILLS_DIR/$name"
+		echo "  linked $name"
+	fi
+}
+
+# 1. Matt Pocock (19 skills across engineering/, productivity/, misc/)
+MATT_DIR="$SOURCES_DIR/mattpocock-skills"
+clone_if_missing "https://github.com/mattpocock/skills.git" "$MATT_DIR"
+for sub in engineering productivity misc; do
+	for d in "$MATT_DIR/skills/$sub"/*/; do
+		[ -d "$d" ] || continue
+		name=$(basename "$d")
+		# Skip non-skill dirs (README.md files, etc.)
+		[ -f "$d/SKILL.md" ] || continue
+		symlink_skill "$d" "$name"
+	done
+done
+
+# 2. MongoDB (7 skills)
+MONGO_DIR="$SOURCES_DIR/mongodb-agent-skills"
+clone_if_missing "https://github.com/mongodb/agent-skills.git" "$MONGO_DIR"
+for d in "$MONGO_DIR/skills"/*/; do
+	[ -d "$d" ] || continue
+	name=$(basename "$d")
+	[ -f "$d/SKILL.md" ] || continue
+	symlink_skill "$d" "$name"
+done
+
+# 3. Vercel (5 skills: vercel-react-best-practices, vercel-composition-patterns, deploy-to-vercel, web-design-guidelines, agent-browser)
+VERCEL_DIR="$SOURCES_DIR/vercel-agent-skills"
+clone_if_missing "https://github.com/vercel-labs/agent-skills.git" "$VERCEL_DIR"
+for name in vercel-react-best-practices vercel-composition-patterns deploy-to-vercel web-design-guidelines agent-browser; do
+	# Vercel skills may be in different subdirs — find by name
+	skill_dir=$(find "$VERCEL_DIR" -maxdepth 3 -type d -name "$name" -print -quit 2>/dev/null)
+	[ -n "$skill_dir" ] && symlink_skill "$skill_dir" "$name"
+done
+
+# 4. Bright Data (8 skills)
+BD_DIR="$SOURCES_DIR/brightdata-skills"
+clone_if_missing "https://github.com/brightdata/skills.git" "$BD_DIR"
+for name in search scrape discover-api data-feeds live-research brightdata-cli bright-data-best-practices rag-pipeline; do
+	skill_dir=$(find "$BD_DIR" -maxdepth 3 -type d -name "$name" -print -quit 2>/dev/null)
+	[ -n "$skill_dir" ] && symlink_skill "$skill_dir" "$name"
+done
+
+# 5. Octocode (5 skills via npx)
+echo "  Installing Octocode skills via npx..."
+for name in octocode octocode-research octocode-brainstorming octocode-rfc-generator octocode-roast; do
+	npx octocode skill --name "$name" --platform pi 2>&1 | tail -1 || warn "Octocode skill $name failed — run update.sh later"
+done
+
+# 6. Python/OSS (3 skills: uv, github, commit)
+MITSU_DIR="$SOURCES_DIR/mitsuhiko-agent-stuff"
+clone_if_missing "https://github.com/mitsuhiko/agent-stuff.git" "$MITSU_DIR"
+for name in uv github commit; do
+	symlink_skill "$MITSU_DIR/skills/$name" "$name"
+done
+
+# 7. UX skills (3 skills: compact-safe, impeccable, mongodb-mcp-cluster-per-project)
+UX_DIR="$SOURCES_DIR/ux-skills"
+clone_if_missing "https://github.com/10gen/ux-skills.git" "$UX_DIR"
+for name in compact-safe impeccable mongodb-mcp-cluster-per-project; do
+	symlink_skill "$UX_DIR/$name" "$name"
+done
+
+# 8. Post-clone notation fix: ensure skill-body slash refs use /skill: prefix
+# This applies the same fix we applied to live copies — fresh installs get it too.
+echo "  Fixing skill-body slash notation..."
+for d in "$AGENTS_SKILLS_DIR"/*/; do
+	[ -f "$d/SKILL.md" ] || continue
+	# Fix bare /<skill-name> refs that should be /skill:<skill-name>
+	# Only fix refs to skills that exist in ~/.agents/skills/
+	for ref_dir in "$AGENTS_SKILLS_DIR"/*/; do
+		ref_name=$(basename "$ref_dir")
+		# Replace /<name> with /skill:<name> but not if already /skill:<name>
+		# Use a temp file to avoid sed -i incompatibility between GNU/BSD sed
+		if grep -q "/$ref_name\b" "$d/SKILL.md" 2>/dev/null | grep -v "/skill:$ref_name"; then
+			sed "s|\b/$ref_name\b|/skill:$ref_name|g" "$d/SKILL.md" >"${d}/SKILL.md.tmp" && mv "${d}/SKILL.md.tmp" "$d/SKILL.md" 2>/dev/null || true
+		fi
+	done
+done
+
+info "Community skills provisioned ($(ls -d "$AGENTS_SKILLS_DIR"/*/ 2>/dev/null | wc -l | tr -d ' ') total skill directories)"
 
 # ── Done ───────────────────────────────────────────────────────────────────
 

@@ -15,6 +15,7 @@
  *
  * Harmony contract:
  * - Owns NO axis. Registers NO tools. Hooks NO tool_call, NO before_agent_start.
+ *   DOES hook `input` (the interception point) and `session_start` (status indicator).
  * - The `input` event is NOT used by any installed package (pi-hermes-memory,
  *   pi-observational-memory, pi-prompt-template-model, pi-rewind,
  *   pi-btw, pi-subagents, pi-lens, pi-web-access, pi-intercom, pi-statusline,
@@ -40,6 +41,10 @@ import { existsSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { complete, type Message } from "@earendil-works/pi-ai/compat";
+// C1 fix: import the loop pause-state check so Coach can skip when the loop
+// is paused for human input. Without this, Coach's {action:"handled"} short-
+// circuits the input chain and the loop never resumes.
+import { isLoopPausedForHuman } from "./loop.ts";
 import type {
 	ExtensionAPI,
 	ExtensionContext,
@@ -201,11 +206,33 @@ async function classifyWithLLM(
 Available commands (discovered live — only suggest from this list):
 ${catalogText}
 
+Intent → command hints (use these to route reliably):
+  build → /build "$TASK"
+  feature → /feature "$TASK" (full chain: plan→build→review→ship)
+  fix → /fix "$TASK" (full chain: debug→build→review→ship)
+  loop → /loop "$TASK" (bounded autonomous loop for hard/multi-phase tasks)
+  debug → /debug "$TASK"
+  plan → /plan "$TASK"
+  research → /research "$TASK"
+  review → /review
+  ship → /ship
+  audit → /setup-audit
+  handoff → /handoff
+  brainstorm → /skill:brainstorming
+  document → /skill:diff-driven-docs
+  compact → /skill:compact-safe
+  write-skill → /skill:writing-great-skills
+  teach → /skill:teach
+  wayfinder → /skill:wayfinder
+  prototype → /skill:prototype
+  triage → /skill:triage
+  implement → /skill:implement
+
 Return ONLY valid JSON (no prose, no markdown fences):
 {
-  "intent": "<one of: build|debug|plan|research|review|ship|refactor|orient|trivial|build-trivial|teach|handoff|setup|implement|compact|triage|write-skill|wayfinder|prototype|audit>",
+  "intent": "<one of: build|debug|plan|research|review|ship|loop|feature|fix|orient|trivial|build-trivial|teach|handoff|setup|implement|compact|triage|write-skill|wayfinder|prototype|audit|brainstorm|document|remember>",
   "reason": "<one short line explaining the routing>",
-  "passthrough": <true if the task is exploratory/trivial and should run with NO popup — orient/trivial/build-trivial; false if a workflow popup helps>,
+  "passthrough": <true if the task is exploratory/trivial and should run with NO popup — orient/trivial/build-trivial/remember; false if a workflow popup helps>,
   "suggestions": [
     {"label": "<display label>", "command": "<slash command with $TASK placeholder, e.g. /feature \\"$TASK\\">", "description": "<one line>"},
     ...2-4 options, best first, always include a "Just do it" option with command null last
@@ -214,11 +241,15 @@ Return ONLY valid JSON (no prose, no markdown fences):
 }
 
 Rules:
-- For orient/trivial/build-trivial: passthrough=true, suggestions=[].
+- For orient/trivial/build-trivial/remember: passthrough=true, suggestions=[].
 - command uses $TASK as the placeholder for the user's task text.
 - ONLY suggest commands that exist in the catalog above — never invent one.
 - Keep suggestions to 2-4 options. Always include "Just do it" (command: null) as the last option.
-- skillHints: short activation notes for relevant domain skills (MongoDB, UI, Python, web, etc.); empty array if none.`;
+- skillHints: short activation notes for relevant domain skills (MongoDB, UI, Python, web, etc.); empty array if none.
+- For 'remember' intent: passthrough=true, inject skillHint "Memory: use memory tool to save".
+- For 'loop' intent: always suggest /loop as the first option (it's the most powerful workflow).
+- For 'feature' intent: suggest /loop first (design approval gated), /feature second (fast path, no approval gate).
+- For 'compact' intent: suggest /skill:compact-safe (NOT /compact which is a built-in not in the catalog).`;
 
 	const messages: Message[] = [
 		{ role: "system", content: systemPrompt },
@@ -260,6 +291,10 @@ export default function coachExtension(pi: ExtensionAPI): void {
 
 		// Never touch agent-injected messages (loop steering, hermes, etc.).
 		if (event.source === "extension") return { action: "continue" };
+
+		// C1 fix: if the loop is paused for a human decision, skip Coach entirely.
+		// The user's response should resume the loop, not be transformed into a slash command.
+		if (isLoopPausedForHuman()) return { action: "continue" };
 
 		const text = event.text.trim();
 		if (!text) return { action: "continue" };

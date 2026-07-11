@@ -8,7 +8,7 @@
   ],
   "lastChangelogVersion": "0.80.6",
   "defaultProvider": "grove-openai",
-  "defaultModel": "FW-Kimi-K2.7-Code",
+  "defaultModel": "FW-GLM-5.2",
   "observational-memory": {
     "observeAfterTokens": 10000,
     "reflectAfterTokens": 20000,
