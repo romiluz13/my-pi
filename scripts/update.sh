@@ -62,6 +62,37 @@ for skill in "${OC_SKILLS[@]}"; do
 done
 info "Octocode skills updated"
 
+step "Re-deploying curated assets (extensions, prompts, AGENTS.md)"
+
+# Re-copy extensions, prompts, and AGENTS.md from the repo to the live Pi dir
+# so update.sh is a complete refresh (not just packages + skills).
+SCRIPT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+PI_AGENT_DIR="${HOME}/.pi/agent"
+
+if [ -d "$SCRIPT_DIR/extensions" ]; then
+	for ext in "$SCRIPT_DIR"/extensions/*.ts; do
+		[ -f "$ext" ] || continue
+		cp "$ext" "$PI_AGENT_DIR/extensions/$(basename "$ext")"
+	done
+	[ -f "$SCRIPT_DIR/extensions/README.md" ] && cp "$SCRIPT_DIR/extensions/README.md" "$PI_AGENT_DIR/extensions/README.md"
+	echo "  extensions re-deployed"
+fi
+
+if [ -d "$SCRIPT_DIR/prompts" ]; then
+	for prompt in "$SCRIPT_DIR"/prompts/*.md; do
+		[ -f "$prompt" ] || continue
+		cp "$prompt" "$PI_AGENT_DIR/prompts/$(basename "$prompt")"
+	done
+	echo "  prompts re-deployed"
+fi
+
+if [ -f "$SCRIPT_DIR/config/agents.md" ]; then
+	cp "$SCRIPT_DIR/config/agents.md" "${HOME}/.ai/AGENTS.md"
+	echo "  AGENTS.md re-deployed"
+fi
+
+info "Curated assets re-deployed"
+
 step "Cleaning stale package versions"
 # Remove old version dirs that Pi leaves behind
 find "$HOME/.pi/agent/npm/node_modules" -maxdepth 3 -name "*.old" -delete 2>/dev/null || true

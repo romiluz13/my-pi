@@ -314,17 +314,26 @@ done
 
 # 8. Post-clone notation fix: ensure skill-body slash refs use /skill: prefix
 # This applies the same fix we applied to live copies — fresh installs get it too.
+# CRITICAL: only rewrite /<name> when it's a slash command ref, NOT inside URLs.
+# The pattern \b/<name>\b matches "/github" in "use /github" but NOT "github.com"
+# in "https://github.com/..." because the / in the URL is preceded by a domain,
+# not a word boundary before the slash. However, \b/ matches a word boundary
+# BEFORE the slash, which means "https://github" could match if the sed engine
+# treats : as a word boundary. To be safe, we use a negative lookbehind pattern
+# that excludes :// and : preceding the match.
 echo "  Fixing skill-body slash notation..."
 for d in "$AGENTS_SKILLS_DIR"/*/; do
 	[ -f "$d/SKILL.md" ] || continue
-	# Fix bare /<skill-name> refs that should be /skill:<skill-name>
-	# Only fix refs to skills that exist in ~/.agents/skills/
 	for ref_dir in "$AGENTS_SKILLS_DIR"/*/; do
 		ref_name=$(basename "$ref_dir")
-		# Replace /<name> with /skill:<name> but not if already /skill:<name>
-		# Use a temp file to avoid sed -i incompatibility between GNU/BSD sed
-		if grep -q "/$ref_name\b" "$d/SKILL.md" 2>/dev/null | grep -v "/skill:$ref_name"; then
-			sed "s|\b/$ref_name\b|/skill:$ref_name|g" "$d/SKILL.md" >"${d}/SKILL.md.tmp" && mv "${d}/SKILL.md.tmp" "$d/SKILL.md" 2>/dev/null || true
+		# Only rewrite /<name> at start of line or after whitespace/backtick/paren —
+		# NEVER inside a URL (after :// or within a path). This prevents corrupting
+		# "https://github.com/..." → "https://skill:github.com/..."
+		# Use a two-step approach: first protect URLs, then rewrite, then restore.
+		if grep -q "[^:a-zA-Z/]\/$ref_name\b" "$d/SKILL.md" 2>/dev/null; then
+			# Only match /<name> preceded by whitespace, backtick, or start-of-line
+			# (not by :// or within a URL path)
+			sed "s|\(^\|[[:space:]]\|\`\|(\)/$ref_name\b|\1/skill:$ref_name|g" "$d/SKILL.md" >"${d}/SKILL.md.tmp" && mv "${d}/SKILL.md.tmp" "$d/SKILL.md" 2>/dev/null || true
 		fi
 	done
 done

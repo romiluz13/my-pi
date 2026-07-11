@@ -10,8 +10,8 @@ Feature: $@
 1. **Understand.** Read the repo AGENTS.md, relevant files, and existing patterns. Fan out subagents for parallel research (web, GitHub, codebase). Search memory for relevant context.
 2. **Brainstorm.** Before designing, explore the context. Ask questions one at a time. Propose 2-3 approaches. Present a design. Get my approval before proceeding.
 3. **Plan.** Based on the situation:
-   - You know what to build → `/to-spec` then `/to-tickets`.
-   - You don't know what to build → `/wayfinder`.
+   - You know what to build → `/skill:to-spec` then `/skill:to-tickets`.
+   - You don't know what to build → `/skill:wayfinder`.
    - Design uncertain, answerable by building → `prototype` (throwaway, answer, discard).
    - Design uncertain, answerable by thinking → `grill-with-docs` (stress-test the plan).
    - Need evidence from primary sources → `research` or `octocode-research`.
