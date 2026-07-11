@@ -6,7 +6,7 @@
     "--",
     "npm"
   ],
-  "lastChangelogVersion": "0.80.5",
+  "lastChangelogVersion": "0.80.6",
   "defaultProvider": "grove-openai",
   "defaultModel": "FW-Kimi-K2.7-Code",
   "observational-memory": {
