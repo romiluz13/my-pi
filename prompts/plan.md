@@ -12,8 +12,8 @@ Feature: $@
 3. **Plan.** Based on the situation:
    - You know what to build → `/skill:to-spec` then `/skill:to-tickets`.
    - You don't know what to build → `/skill:wayfinder`.
-   - Design uncertain, answerable by building → `prototype` (throwaway, answer, discard).
-   - Design uncertain, answerable by thinking → `grill-with-docs` (stress-test the plan).
-   - Need evidence from primary sources → `research` or `octocode-research`.
+   - Design uncertain, answerable by building → `/skill:prototype` (throwaway, answer, discard).
+   - Design uncertain, answerable by thinking → `/skill:grill-with-docs` (stress-test the plan).
+   - Need evidence from primary sources → `/skill:research` or `/skill:octocode-research`.
 
 Do NOT write any production code. This is planning only. Stop after tickets are published.

@@ -1,6 +1,7 @@
 ---
 description: Full setup health audit — versions, harmony, Coach coverage, disk, AGENTS.md, ecosystem steals
 argument-hint: "[focus: versions|harmony|coach|disk|all]"
+skill: setup-maintenance
 ---
 
 Run a full health audit of this Pi setup. Fan out parallel read-only subagents — one per audit axis — then synthesize into a report with recommended actions. This is read-only: do NOT change anything, just report.

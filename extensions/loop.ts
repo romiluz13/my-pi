@@ -811,7 +811,7 @@ function setupHooks(pi: ExtensionAPI): void {
 				recordStatus(ctx);
 				await steer(
 					pi,
-					`${phasePrompt(active, "build")}\n\nRemediation iteration ${active.iteration}: address the CRITICAL/HIGH review findings.\n\n**Change an input before re-dispatching:** do NOT retry the same approach — narrow scope, escalate model tier (Ctrl+L), change approach/tool, or if the plan is wrong STOP and ask the human.`,
+					`${withSkills(phasePrompt(active, "build"), "tdd", "implement")}\n\nRemediation iteration ${active.iteration}: address the CRITICAL/HIGH review findings.\n\n**Change an input before re-dispatching:** do NOT retry the same approach — narrow scope, escalate model tier (Ctrl+L), change approach/tool, or if the plan is wrong STOP and ask the human.`,
 				);
 				return;
 			}
@@ -880,7 +880,7 @@ function setupHooks(pi: ExtensionAPI): void {
 				recordStatus(ctx);
 				await steer(
 					pi,
-					`${phasePrompt(active, "build")}\n\nRemediation iteration ${active.iteration}: the previous BUILD run reported RED (tests failing). Do NOT claim done. Fix the failing test, re-run it, and paste the literal command + exit code + output. A failing test is never completion.`,
+					`${withSkills(phasePrompt(active, "build"), "tdd", "implement")}\n\nRemediation iteration ${active.iteration}: the previous BUILD run reported RED (tests failing). Do NOT claim done. Fix the failing test, re-run it, and paste the literal command + exit code + output. A failing test is never completion.`,
 				);
 				return;
 			}

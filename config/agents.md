@@ -22,7 +22,7 @@ When given a task, follow this flow automatically. The workflow IS the skill rou
    - **You know what to build** (>3 files, new feature) → `/skill:to-spec` then `/skill:to-tickets`.
    - **You don't know what to build** (fog of war, loose idea) → `/skill:wayfinder`.
    - **Design question answerable by building** → `prototype` (throwaway, answer the question, discard — prototype code NEVER becomes production by surviving; if building for real, start a fresh BUILD with full gates).
-   - **Design question answerable by thinking** → `grill-with-docs` (relentless interview to stress-test the plan).
+   - **Design question answerable by thinking** → `/skill:grill-with-docs` (relentless interview to stress-test the plan, uses `/skill:grilling` primitive + `/skill:domain-modeling` for ADRs).
    - **Need evidence from primary sources** → `/skill:research` or `/skill:octocode-research` (background agent, cited markdown — 3+ independent sources agree → stop, max 6 calls per round). Research code/prior art with citations → `/skill:octocode-research`. General research (web, docs, concepts) → `/skill:research`.
    - Read pre-existing ADRs (`docs/adr/`) as SETTLED constraints — if the plan contradicts one, FLAG it, don't silently override.
    - Bug fix or small change → skip to step 4.
