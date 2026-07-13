@@ -49,3 +49,20 @@ Add `--mode=agents` to `/loop`. In agents mode, the loop engine becomes a pure o
 - Sub-agent dispatch is heavier than steering (spawns a pi subprocess per phase)
 - Structured output eliminates narrative gates (regex over prose)
 - Journaling survives compaction — phase results persist to disk
+
+## Testing results (2026-07-13)
+
+End-to-end test passed: all 5 phases (PLAN → BUILD → REVIEW → VERIFY → SHIP) ran successfully as pi subprocesses with structured output. Total time for trivial task: 158s.
+
+Bugs found and fixed during testing:
+
+1. `emit_result` filtered out by `--tools` allowlist — fix: add `emit_result` to the tools list
+2. Generated extension used `handler` instead of `execute` — Pi's `registerTool` needs `async execute(toolCallId, params)`
+3. `parseEmitResult` looked in wrong event fields — fix: parse both `tool_execution_end` and `message_end` events
+4. Budget tracking never updated `spentTokens`/`spentCost` — fix: `updateBudget()` parses usage from JSON stream
+5. REVIEW dispatched 1 reviewer, not 3 — fix: `Promise.all` over 3 focuses (standards, spec, security)
+6. Review findings not passed to VERIFY — fix: gate on `phase === "verify" || phase === "ship"` + wrap in delimiters
+7. Agent type system prompts loaded but never passed to sub-agent — fix: `--append-system-prompt` with `agentType.body`
+8. Review all-fail silently approved — fix: `successCount === 0` guard sets `ok:false`
+
+30 unit tests pass across 5 test suites.
