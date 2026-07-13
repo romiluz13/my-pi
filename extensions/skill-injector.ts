@@ -26,10 +26,7 @@
  *   into the system prompt — different mechanisms, no conflict).
  */
 
-import {
-	existsSync,
-	readFileSync,
-} from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { homedir } from "node:os";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
@@ -42,11 +39,26 @@ const SKILL_INJECTIONS: Record<string, string[]> = {
 	// /build pins tdd → also need implement + uv
 	tdd: ["implement", "uv"],
 	// /plan pins brainstorming → also need the full planning toolkit
-	brainstorming: ["to-spec", "to-tickets", "wayfinder", "prototype", "grill-with-docs"],
+	brainstorming: [
+		"to-spec",
+		"to-tickets",
+		"wayfinder",
+		"prototype",
+		"grill-with-docs",
+	],
 	// /review pins code-review → also need the review toolkit
-	"code-review": ["receiving-code-review", "improve-codebase-architecture", "codebase-hygiene"],
+	"code-review": [
+		"receiving-code-review",
+		"improve-codebase-architecture",
+		"codebase-hygiene",
+	],
 	// /ship pins verification-before-completion → also need the shipping toolkit
-	"verification-before-completion": ["commit", "github", "diff-driven-docs", "domain-modeling"],
+	"verification-before-completion": [
+		"commit",
+		"github",
+		"diff-driven-docs",
+		"domain-modeling",
+	],
 };
 
 // ─── Skill content loading ─────────────────────────────────────────────────
@@ -75,27 +87,45 @@ function loadSkillContent(skillName: string): string | null {
 
 function detectPinnedSkill(prompt: string): string | null {
 	// /build body starts with "Build the following" or "workflow steps 4-5"
-	if (prompt.includes("workflow steps 4-5") || prompt.includes("Build the following")) {
+	if (
+		prompt.includes("workflow steps 4-5") ||
+		prompt.includes("Build the following")
+	) {
 		return "tdd";
 	}
 	// /plan body starts with "Plan the following" or "workflow steps 1-3"
-	if (prompt.includes("workflow steps 1-3") || prompt.includes("Plan the following")) {
+	if (
+		prompt.includes("workflow steps 1-3") ||
+		prompt.includes("Plan the following")
+	) {
 		return "brainstorming";
 	}
 	// /review body mentions "code-review skill"
-	if (prompt.includes("code-review skill") || prompt.includes("Review the current")) {
+	if (
+		prompt.includes("code-review skill") ||
+		prompt.includes("Review the current")
+	) {
 		return "code-review";
 	}
 	// /ship body mentions "workflow steps 7-8"
-	if (prompt.includes("workflow steps 7-8") || prompt.includes("Ship the current")) {
+	if (
+		prompt.includes("workflow steps 7-8") ||
+		prompt.includes("Ship the current")
+	) {
 		return "verification-before-completion";
 	}
 	// /debug body mentions "workflow step 5"
-	if (prompt.includes("workflow step 5") || prompt.includes("Debug the following")) {
+	if (
+		prompt.includes("workflow step 5") ||
+		prompt.includes("Debug the following")
+	) {
 		return "diagnosing-bugs";
 	}
 	// /research body mentions "research skill"
-	if (prompt.includes("research skill") || prompt.includes("Research the following")) {
+	if (
+		prompt.includes("research skill") ||
+		prompt.includes("Research the following")
+	) {
 		return "research";
 	}
 	return null;
@@ -144,7 +174,10 @@ export default function skillInjectorExtension(pi: ExtensionAPI): void {
 		// But we can also set a flag for guardrails to include a reminder.
 		// For now, just log that we'll re-inject on the next turn.
 		try {
-			ctx.ui.setStatus("skills", `${lastInjectedSkills.length} skills queued for re-injection`);
+			ctx.ui.setStatus(
+				"skills",
+				`${lastInjectedSkills.length} skills queued for re-injection`,
+			);
 		} catch {
 			// Status may not be available in all modes
 		}

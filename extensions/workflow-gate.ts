@@ -38,7 +38,9 @@ const PUSH_REQUIRED_SKILLS = ["commit"];
 
 // ─── Check which skills were loaded in this session ────────────────────────
 
-function getLoadedSkills(ctx: { sessionManager: { getBranch: () => Array<Record<string, unknown>> } }): Set<string> {
+function getLoadedSkills(ctx: {
+	sessionManager: { getBranch: () => Array<Record<string, unknown>> };
+}): Set<string> {
 	const loaded = new Set<string>();
 	try {
 		const branch = ctx.sessionManager.getBranch();
@@ -56,14 +58,22 @@ function getLoadedSkills(ctx: { sessionManager: { getBranch: () => Array<Record<
 
 // ─── Check if tests were run in this session ───────────────────────────────
 
-function wasTestRun(ctx: { sessionManager: { getBranch: () => Array<Record<string, unknown>> } }): boolean {
+function wasTestRun(ctx: {
+	sessionManager: { getBranch: () => Array<Record<string, unknown>> };
+}): boolean {
 	try {
 		const branch = ctx.sessionManager.getBranch();
 		for (const entry of branch) {
 			const input = entry.input as { command?: string } | undefined;
 			if (input?.command) {
 				const cmd = input.command.toLowerCase();
-				if (cmd.includes("test") || cmd.includes("pytest") || cmd.includes("cargo test") || cmd.includes("npm test") || cmd.includes("node --test")) {
+				if (
+					cmd.includes("test") ||
+					cmd.includes("pytest") ||
+					cmd.includes("cargo test") ||
+					cmd.includes("npm test") ||
+					cmd.includes("node --test")
+				) {
 					return true;
 				}
 			}
@@ -103,10 +113,13 @@ export default function workflowGateExtension(pi: ExtensionAPI): void {
 					.filter((e) => e.type === "user" || e.type === "message")
 					.slice(-5)
 					.map((e) => {
-						const content = (e as { message?: { content?: unknown } }).message?.content;
+						const content = (e as { message?: { content?: unknown } }).message
+							?.content;
 						if (typeof content === "string") return content;
 						if (Array.isArray(content)) {
-							return content.map((b: { text?: string }) => b?.text ?? "").join(" ");
+							return content
+								.map((b: { text?: string }) => b?.text ?? "")
+								.join(" ");
 						}
 						return "";
 					})
@@ -133,10 +146,13 @@ export default function workflowGateExtension(pi: ExtensionAPI): void {
 					.filter((e) => e.type === "user" || e.type === "message")
 					.slice(-5)
 					.map((e) => {
-						const content = (e as { message?: { content?: unknown } }).message?.content;
+						const content = (e as { message?: { content?: unknown } }).message
+							?.content;
 						if (typeof content === "string") return content;
 						if (Array.isArray(content)) {
-							return content.map((b: { text?: string }) => b?.text ?? "").join(" ");
+							return content
+								.map((b: { text?: string }) => b?.text ?? "")
+								.join(" ");
 						}
 						return "";
 					})
