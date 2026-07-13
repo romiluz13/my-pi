@@ -42,7 +42,9 @@ function validateSchema(schema: unknown, depth = 0): void {
 			// actual strings (JSON.stringify escapes quotes/backslashes).
 			// But reject strings containing template-literal delimiters just in case.
 			if (val.includes("`") || val.includes("${")) {
-				throw new Error(`Schema string at key "${key}" contains unsafe characters`);
+				throw new Error(
+					`Schema string at key "${key}" contains unsafe characters`,
+				);
 			}
 		} else if (typeof val === "object" && val !== null) {
 			validateSchema(val, depth + 1);
@@ -73,9 +75,12 @@ export default function (pi: ExtensionAPI) {
       "Emit the final structured result for this task. Call this exactly once, as your last action, with the complete answer matching the required schema.",
     promptSnippet: "Emit the final structured result (required last action)",
     parameters: schema,
-    handler: async (args: unknown) => ({
-      content: [{ type: "text", text: JSON.stringify(args) }],
-    }),
+    async execute(_toolCallId: string, params: unknown) {
+      return {
+        content: [{ type: "text", text: JSON.stringify(params) }],
+        details: {},
+      };
+    },
   });
 }
 `;
@@ -110,4 +115,6 @@ function rmSyncRecursive(dir: string): void {
 // No-op Pi extension factory — this file is a library module imported by loop.ts,
 // not a standalone extension. Pi requires a default export to load without error.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export default function (_pi: any) { /* library module — no hooks */ }
+export default function (_pi: any) {
+	/* library module — no hooks */
+}

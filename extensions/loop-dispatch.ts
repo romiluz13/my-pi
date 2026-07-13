@@ -229,4 +229,6 @@ export function buildDispatchPrompt(params: DispatchPromptParams): string {
 // No-op Pi extension factory — this file is a library module imported by loop.ts,
 // not a standalone extension. Pi requires a default export to load without error.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export default function (_pi: any) { /* library module — no hooks */ }
+export default function (_pi: any) {
+	/* library module — no hooks */
+}

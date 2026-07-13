@@ -673,7 +673,9 @@ async function dispatchPhaseAgent(
 		structuredExt.path,
 	];
 	if (agentType.tools.length > 0) {
-		piArgs.push("--tools", agentType.tools.join(","));
+		// Include emit_result in the allowlist — otherwise --tools filters it out
+		// and the sub-agent can't return structured output.
+		piArgs.push("--tools", [...agentType.tools, "emit_result"].join(","));
 	}
 
 	// Spawn the sub-agent as a pi subprocess
@@ -724,23 +726,48 @@ function parseEmitResult(
 	jsonStream: string,
 ): Record<string, unknown> | undefined {
 	// Pi --mode json outputs newline-delimited JSON events.
-	// Look for a tool_call event with toolName === "emit_result".
+	// The emit_result tool call appears in two places:
+	// 1. tool_execution_end: event.toolName === "emit_result", result in event.result.content[0].text
+	// 2. message_end (assistant): content[].type === "toolCall", name === "emit_result", args in .arguments
+	let result: Record<string, unknown> | undefined;
 	for (const line of jsonStream.split("\n")) {
 		const trimmed = line.trim();
 		if (!trimmed) continue;
 		try {
 			const event = JSON.parse(trimmed) as Record<string, unknown>;
-			if (event.type === "tool_call" || event.toolName === "emit_result") {
-				const args = event.arguments ?? event.args;
-				if (args && typeof args === "object") {
-					return args as Record<string, unknown>;
+
+			// Case 1: tool_execution_end with toolName === "emit_result"
+			if (event.toolName === "emit_result" && event.type === "tool_execution_end") {
+				const resultContent = (event.result as { content?: Array<{ text?: string }> })?.content;
+				const text = resultContent?.[0]?.text;
+				if (text) {
+					try {
+						result = JSON.parse(text) as Record<string, unknown>;
+					} catch {
+						// text wasn't JSON — skip
+					}
+				}
+			}
+
+			// Case 2: message_end (assistant) with toolCall content
+			if (event.type === "message_end") {
+				const msg = event.message as { role?: string; content?: Array<Record<string, unknown>> };
+				if (msg?.role === "assistant" && Array.isArray(msg.content)) {
+					for (const block of msg.content) {
+						if (block.type === "toolCall" && block.name === "emit_result") {
+							const args = block.arguments as Record<string, unknown>;
+							if (args && typeof args === "object") {
+								result = args;
+							}
+						}
+					}
 				}
 			}
 		} catch {
 			// skip non-JSON lines
 		}
 	}
-	return undefined;
+	return result;
 }
 
 async function runLoopAgents(
