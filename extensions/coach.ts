@@ -171,6 +171,13 @@ const WORKFLOW_OPTIONS: WorkflowOption[] = [
 			"Contract gate → plan → build → review → verify → ship. Pauses for human input. Tool restrictions per phase.",
 	},
 	{
+		label:
+			"/loop --mode=agents — Sub-agent dispatch (fresh context per phase)",
+		command: '/loop --mode=agents "$TASK"',
+		description:
+			"Each phase spawns a fresh-context sub-agent. Structured output via emit_result. Journal persists results. Budget control.",
+	},
+	{
 		label: "/debug — Debug an issue (feedback loop, root cause)",
 		command: '/debug "$TASK"',
 		description:
