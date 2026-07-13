@@ -86,7 +86,7 @@ function loadConfig(): TraceConfig {
 interface TraceEntry {
 	ts: string;
 	session: string;
-	type: "turn_start" | "skill_activated" | "tool_call" | "agent_end";
+	type: "turn_start" | "skill_activated" | "skill_injected" | "tool_call" | "agent_end";
 	[key: string]: unknown;
 }
 
@@ -217,7 +217,42 @@ export default function traceExtension(pi: ExtensionAPI): void {
 	});
 
 	// Log agent end: how many messages this run produced.
+	// Also detect PTM skill injection: check session entries for customType === "skill-loaded".
+	// PTM emits these messages when it mechanically injects a skill via:
+	//   - skill: frontmatter pin (Grade A — e.g. /build pins tdd)
+	//   - /skill:name command (Grade B — e.g. /skill:to-tickets)
+	// Without this check, trace.ts can only see Grade C (model reads SKILL.md via read tool).
+	// With this check, trace.ts sees ALL THREE grades.
 	pi.on("agent_end", async (event, ctx) => {
+		// Check session entries for skill-loaded custom messages added this turn.
+		// PTM emits entries with type="custom_message", customType="skill-loaded",
+		// and details.{skillName, skillPath} at the TOP LEVEL of the entry.
+		try {
+			const branch = ctx.sessionManager.getBranch();
+			const messageCount = Array.isArray(event.messages) ? event.messages.length : 0;
+			// Scan recent entries for skill-loaded custom messages.
+			// Only check entries near the end (this turn's additions).
+			const scanStart = Math.max(0, branch.length - messageCount - 5);
+			for (let i = scanStart; i < branch.length; i++) {
+				const entry = branch[i] as {
+					customType?: string;
+					details?: { skillName?: string; skillPath?: string };
+				};
+				if (entry.customType === "skill-loaded" && entry.details?.skillName) {
+					appendTrace(cfg, {
+						ts: new Date().toISOString(),
+						session: ctx.sessionManager.getSessionId(),
+						type: "skill_injected",
+						skill: entry.details.skillName,
+						path: entry.details.skillPath ?? "",
+						grade: "A_or_B",
+					});
+				}
+			}
+		} catch {
+			// Session access may fail in edge cases — never break the agent.
+		}
+
 		appendTrace(cfg, {
 			ts: new Date().toISOString(),
 			session: ctx.sessionManager.getSessionId(),
@@ -256,7 +291,9 @@ export default function traceExtension(pi: ExtensionAPI): void {
 					case "turn_start":
 						return `${time} TURN  skills:${e.skillCount ?? 0}  tools:${(e.activeTools as string[])?.length ?? 0}  prompt:"${(e.prompt as string)?.slice(0, 60) ?? ""}"`;
 					case "skill_activated":
-						return `${time} SKILL ✓ ${e.skill}`;
+						return `${time} SKILL ✓ ${e.skill} (read by model)`;
+					case "skill_injected":
+						return `${time} SKILL ⚡ ${e.skill} (mechanically injected by PTM)`;
 					case "tool_call":
 						return `${time} TOOL  ${e.tool}`;
 					case "agent_end":
@@ -294,10 +331,15 @@ export default function traceExtension(pi: ExtensionAPI): void {
 				}
 			}
 
-			// Collect all skills ACTUALLY activated (read by model) this session.
+			// Collect all skills ACTUALLY activated this session.
+			// Grade C: model read SKILL.md via read tool.
 			const activatedSkills = new Set<string>();
 			for (const e of entries) {
 				if (e.type === "skill_activated" && e.session === sessionId) {
+					activatedSkills.add(e.skill as string);
+				}
+				// Grade A/B: PTM mechanically injected the skill.
+				if (e.type === "skill_injected" && e.session === sessionId) {
 					activatedSkills.add(e.skill as string);
 				}
 			}
