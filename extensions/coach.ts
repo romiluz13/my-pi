@@ -165,17 +165,10 @@ const WORKFLOW_OPTIONS: WorkflowOption[] = [
 	},
 	{
 		label:
-			"/loop — Bounded loop with phase gates + human approval (hard tasks)",
-		command: '/loop "$TASK"',
-		description:
-			"Contract gate → plan → build → review → verify → ship. Pauses for human input. Tool restrictions per phase.",
-	},
-	{
-		label:
-			"/loop --mode=agents — Sub-agent dispatch (fresh context per phase)",
+			"/loop — Bounded loop: plan → build → review → verify → ship (hard tasks)",
 		command: '/loop --mode=agents "$TASK"',
 		description:
-			"Each phase spawns a fresh-context sub-agent. Structured output via emit_result. Journal persists results. Budget control.",
+			"Contract gate → plan → build → review → verify → ship. Each phase spawns a fresh-context sub-agent. Phase gates pause for human input. Structured output + journal + budget control.",
 	},
 	{
 		label: "/debug — Debug an issue (feedback loop, root cause)",
