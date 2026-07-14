@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node --test --experimental-strip-types test/"
+    "test": "node --test --experimental-strip-types \"test/**/*.test.ts\""
   },
   "devDependencies": {
     "@types/node": "^26.1.1",
