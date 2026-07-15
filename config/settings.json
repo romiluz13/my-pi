@@ -96,7 +96,7 @@
   },
   "retry": {
     "enabled": true,
-    "maxRetries": 3,
+    "maxRetries": 10,
     "baseDelayMs": 2000,
     "provider": {
       "timeoutMs": 300000,
