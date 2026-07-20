@@ -75,7 +75,7 @@
     "reserveTokens": 65536,
     "keepRecentTokens": 50000
   },
-  "defaultProjectTrust": "ask",
+  "defaultProjectTrust": "always",
   "enabledModels": [
     "claude-*",
     "gpt-5.4",
