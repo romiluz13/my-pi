@@ -115,37 +115,14 @@ type Phase =
 type WorkflowType = "build" | "debug" | "plan";
 
 const PHASE_TOOLS: Record<Phase, string[] | null> = {
-	// null = no restriction (full toolset). Non-null = allowlist enforced by gate.
-	plan: [
-		"read",
-		"grep",
-		"find",
-		"ls",
-		"write", // BUG-3 fix: PLAN must write .loop-plan.md (its deliverable) — was gated off, breaking the PLAN→BUILD bridge
-		"lsp_diagnostics",
-		"lsp_navigation",
-		"module_report",
-		"read_symbol",
-		"read_enclosing",
-		"ast_grep_search",
-		"ast_grep_outline",
-		"ask_user_question",
-	],
-	build: null, // full toolset — the generator needs write/edit/bash
-	review: null, // reviewer needs read + subagent dispatch
-	verify: [
-		"read",
-		"bash",
-		"grep",
-		"find",
-		"ls",
-		"lsp_diagnostics",
-		"lens_diagnostics",
-		"ast_grep_search",
-		"subagent",
-		"wait",
-	],
-	ship: ["read", "bash", "grep", "find", "ls", "ask_user_question"],
+	// Full autonomy mode: ALL phases get full toolset (null = no restriction).
+	// The user explicitly requested 0 limitations. Phase gates removed.
+	// To re-enable, set specific phases to string arrays of allowed tools.
+	plan: null,
+	build: null,
+	review: null,
+	verify: null,
+	ship: null,
 	done: null,
 	rejected: null,
 };

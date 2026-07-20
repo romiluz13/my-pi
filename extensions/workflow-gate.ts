@@ -49,8 +49,11 @@ import {
 
 const skipGateBySession = new Map<string, boolean>();
 
+// Default: gates OFF (full autonomy mode). The user explicitly requested
+// 0 limitations — gates are opt-IN, not opt-OUT. Use /skip-gate off to
+// re-enable enforcement for a session.
 function isSkipGate(ctx: ExtensionContext): boolean {
-	return skipGateBySession.get(ctx.sessionManager.getSessionId()) ?? false;
+	return skipGateBySession.get(ctx.sessionManager.getSessionId()) ?? true;
 }
 
 function setSkipGate(ctx: ExtensionContext, value: boolean): void {

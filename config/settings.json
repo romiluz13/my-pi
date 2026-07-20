@@ -27,7 +27,6 @@
   },
   "theme": "dark",
   "packages": [
-    "npm:@spences10/pi-confirm-destructive",
     "npm:@spences10/pi-context",
     "npm:@juicesharp/rpiv-ask-user-question",
     "npm:@narumitw/pi-statusline",
