@@ -33,7 +33,6 @@
     "npm:pi-btw",
     "npm:pi-hermes-memory",
     "npm:pi-intercom",
-    "npm:@spences10/pi-observability",
     "npm:pi-lens",
     "npm:pi-observational-memory",
     "npm:pi-prompt-template-model",
