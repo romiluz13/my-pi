@@ -102,6 +102,14 @@ Fan out for read-only work. Stay solo for write work. Context is everything — 
 
 Default: fan out research, build solo, review in parallel.
 
+## Cross-session collaboration
+
+Manual cross-session review via intercom: `intercom ask` to send a diff/design/plan/bug to another session. The reviewing session replies with findings. You decide when to stop. For autonomous multi-model review, use `/loop --cross-model` (parallel subagents + convergence gate) — don't reinvent it across sessions.
+
+**Anti-sycophancy rules** (paste into every cross-session review ask): (1) Zero findings on a non-trivial change = insufficient depth, re-scan before CLEAN. (2) Each finding needs file:line + code snippet. (3) APPROVE with zero findings + <3 citations = rubber stamp. (4) Steelman the opposing view BEFORE agreeing — argue AGAINST, then explain why it survives.
+
+**Swarm limit:** 3-5 agents max via intercom. At 6+ the noise exceeds signal (intercom is 1:1, no broadcast; steelman rule is N² traffic; diminishing returns — 2 reviewers catch ~80%, 5 catch ~90%, 10 catch ~93%). For 6+ agents, use `/loop --cross-model` with parallel subagents.
+
 If `/skill:to-spec` or `/skill:to-tickets` fails, configure the issue tracker first. External tech → validate APIs before step 4 (see below).
 
 ## Skill routing
